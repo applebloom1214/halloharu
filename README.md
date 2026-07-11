@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 할로하루 HalloHaru
 
-## Getting Started
+할로하루는 사용자가 하루를 가볍게 기록하고, 부담 없는 공감과 웃음을 주고받을 수 있는 하루 기록 서비스입니다.
 
-First, run the development server:
+## 프로젝트 목적
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+대부분의 SNS는 뛰어난 외모, 능력, 인맥, 화려한 일상처럼 보여줄 것이 많은 사람에게 유리합니다.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+반면 평범한 일상을 보내는 사람들은 글을 올려도 충분한 반응을 받기 어렵고, 무플과 무관심이 반복되면 점점 기록의 흥미를 잃게 됩니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+할로하루는 평범한 하루도 부담 없이 남기고, 가벼운 리액션으로 공감받을 수 있는 공간을 목표로 합니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## MVP 기능
 
-## Learn More
+- 회원가입 / 로그인
+- 가벼운 하루 기록 작성
+- 하루 기록 목록 보기
+- 이모지 / 이모티콘 공감 리액션
+- 내가 쓴 기록 보기
+- 유머 공간 Coming soon 페이지
 
-To learn more about Next.js, take a look at the following resources:
+## 기술 스택 예정
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Next.js
+- TypeScript
+- Supabase
+- Tailwind CSS
+- Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 개발 진행 상황
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [x] 서비스명 결정
+- [x] 로고 / 파비콘 방향 결정
+- [x] MVP 기획서 초안 작성
+- [x] 화면 목록 정리
+- [x] GitHub 저장소 생성
+- [ ] Next.js 프로젝트 생성
+- [ ] 첫 화면 구현
