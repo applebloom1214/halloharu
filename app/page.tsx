@@ -1,4 +1,24 @@
+"use client";
+import { useState } from "react";
+
 export default function Home() {
+  const [content, setContent] = useState("");
+  const [posts, setPosts] = useState([
+    "오늘은 별일 없었지만 퇴근길 바람이 좋았다.",
+    "아무것도 안 한 것 같지만 그래도 하루를 버텼다."
+  ]);
+
+  const handleSummit =() => {
+    const trimmedContent = content.trim();
+
+    if(trimmedContent === ""){
+      return;
+    }
+
+    setPosts((previousPosts) => [content, ...previousPosts]);
+    setContent("");
+  };
+
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#333333]">
       <header className="flex items-center justify-between border-b bg-white px-6 py-4">
@@ -25,12 +45,16 @@ export default function Home() {
 
         <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
           <textarea
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
             className="h-32 w-full resize-none rounded-xl border p-4 outline-none focus:border-emerald-400"
             placeholder="오늘은 어떤 하루였나요?"
           />
 
           <div className="mt-4 flex justify-end">
-            <button className="rounded-full bg-emerald-400 px-5 py-2 font-semibold text-white">
+            <button 
+              onClick={handleSummit}
+              className="rounded-full bg-emerald-400 px-5 py-2 font-semibold text-white">
               하루 남기기
             </button>
           </div>
@@ -40,19 +64,14 @@ export default function Home() {
           <h3 className="mb-4 text-lg font-semibold">최근 올라온 하루</h3>
 
           <div className="space-y-3">
-            <div className="rounded-2xl border bg-white p-4">
-              <p>오늘은 별일 없었지만 퇴근길 바람이 좋았다.</p>
-              <div className="mt-3 text-sm text-gray-500">
-                🌱 공감 12 · 💪 응원 3 · 😊 미소 5
-              </div>
-            </div>
-
-            <div className="rounded-2xl border bg-white p-4">
-              <p>아무것도 안 한 것 같지만 그래도 하루를 버텼다.</p>
-              <div className="mt-3 text-sm text-gray-500">
-                🌱 공감 8 · 💪 응원 6 · 😊 미소 2
-              </div>
-            </div>
+            {posts.map((post, index) =>(
+              <div key={index} className="rounded=2xl border bg-white p-4">
+                <p>{post}</p>
+                <div className="mt-3 text-sm text-gray-500">
+                  🌱 공감 0 · 💪 응원 0 · 😊 미소 0
+                </div>  
+              </div>   
+            ))}      
           </div>
         </div>
       </section>
