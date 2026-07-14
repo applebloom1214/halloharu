@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
 
 export default function Home() {
@@ -22,7 +23,13 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#333333]">
       <header className="flex items-center justify-between border-b bg-white px-6 py-4">
-        <h1 className="text-2xl font-bold text-emerald-400">할로하루</h1>
+        <Image
+          src="/halloharu-logo.png"
+          alt="할로하루 로고"
+          height={40}
+          width={200}
+          className="h-11 w-auto"
+        />
 
         <div className="flex gap-2">
           <button className="rounded-full border px-4 py-2 text-sm">
