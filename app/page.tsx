@@ -1,12 +1,24 @@
 "use client";
 import Image from "next/image";
 import { useState } from "react";
+import PostCard from "../components/PostCard";
+
+type Post = {
+  id : number;
+  content : string;
+};
 
 export default function Home() {
   const [content, setContent] = useState("");
-  const [posts, setPosts] = useState([
-    "오늘은 별일 없었지만 퇴근길 바람이 좋았다.",
-    "아무것도 안 한 것 같지만 그래도 하루를 버텼다."
+  const [posts, setPosts] = useState<Post[]>([
+    {
+      id :1,
+      content :  "오늘은 별일 없었지만 퇴근길 바람이 좋았다.",
+    },
+    {
+      id :2,
+      content :  "아무것도 안 한 것 같지만 그래도 하루를 버텼다.",
+    },
   ]);
 
   const handleSummit =() => {
@@ -16,7 +28,14 @@ export default function Home() {
       return;
     }
 
-    setPosts((previousPosts) => [content, ...previousPosts]);
+    setPosts((previousPosts) => [
+      {
+        id : Date.now(),
+        content : trimmedContent,
+      },
+      ...previousPosts,
+    ]);
+
     setContent("");
   };
 
@@ -72,12 +91,7 @@ export default function Home() {
 
           <div className="space-y-3">
             {posts.map((post, index) =>(
-              <div key={index} className="rounded=2xl border bg-white p-4">
-                <p>{post}</p>
-                <div className="mt-3 text-sm text-gray-500">
-                  🌱 공감 0 · 💪 응원 0 · 😊 미소 0
-                </div>  
-              </div>   
+              <PostCard key={post.id} content={post.content}/>   
             ))}      
           </div>
         </div>
