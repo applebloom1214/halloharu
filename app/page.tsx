@@ -6,6 +6,10 @@ import PostCard from "../components/PostCard";
 type Post = {
   id : number;
   content : string;
+  empathyCount : number;
+  cheerCount : number;
+  smileCount : number;
+  isEmpathized : boolean;
 };
 
 export default function Home() {
@@ -14,10 +18,18 @@ export default function Home() {
     {
       id :1,
       content :  "오늘은 별일 없었지만 퇴근길 바람이 좋았다.",
+      empathyCount :12 ,
+      cheerCount : 3,
+      smileCount :5,
+      isEmpathized :false,
     },
     {
       id :2,
       content :  "아무것도 안 한 것 같지만 그래도 하루를 버텼다.",
+      empathyCount :8 ,
+      cheerCount : 6,
+      smileCount :2,
+      isEmpathized : false,
     },
   ]);
 
@@ -32,11 +44,33 @@ export default function Home() {
       {
         id : Date.now(),
         content : trimmedContent,
+        empathyCount :0 ,
+        cheerCount : 0,
+        smileCount :0,
+        isEmpathized : false,
       },
       ...previousPosts,
     ]);
 
     setContent("");
+  };
+
+  const handleEmpathy = (postId : number) =>{
+    setPosts((previousPosts) =>
+      previousPosts.map( (post) => {
+        if (post.id !== postId){
+          return post;
+        }
+
+        return{
+          ...post,
+          empathyCount : post.isEmpathized
+            ? post.empathyCount -1
+            : post.empathyCount + 1,
+            isEmpathized : !post.isEmpathized,
+        };
+      }),
+    );
   };
 
   return (
@@ -91,7 +125,14 @@ export default function Home() {
 
           <div className="space-y-3">
             {posts.map((post, index) =>(
-              <PostCard key={post.id} content={post.content}/>   
+              <PostCard 
+              key={post.id} 
+              content={post.content}
+              empathyCount={post.empathyCount}
+              cheerCount={post.cheerCount}
+              smileCount={post.smileCount}
+              onEmpathyClick = {()=> handleEmpathy(post.id)}
+              />   
             ))}      
           </div>
         </div>
