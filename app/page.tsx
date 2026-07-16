@@ -56,7 +56,9 @@ export default function Home() {
   };
 
   const handleEmpathy = (postId : number) =>{
+
     setPosts((previousPosts) =>
+
       previousPosts.map( (post) => {
         if (post.id !== postId){
           return post;
@@ -124,7 +126,7 @@ export default function Home() {
           <h3 className="mb-4 text-lg font-semibold">최근 올라온 하루</h3>
 
           <div className="space-y-3">
-            {posts.map((post, index) =>(
+            {posts.map((post) =>(
               <PostCard 
               key={post.id} 
               content={post.content}
