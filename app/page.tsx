@@ -133,6 +133,7 @@ export default function Home() {
               empathyCount={post.empathyCount}
               cheerCount={post.cheerCount}
               smileCount={post.smileCount}
+              isEmpathized = {post.isEmpathized}
               onEmpathyClick = {()=> handleEmpathy(post.id)}
               />   
             ))}      

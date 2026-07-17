@@ -3,6 +3,7 @@ type PostCardProps ={
   empathyCount: number;
   cheerCount: number;
   smileCount: number;
+  isEmpathized : boolean;
   onEmpathyClick : () => void;
 }
 
@@ -11,6 +12,7 @@ export default function PostCard({
     empathyCount,
     cheerCount,
     smileCount,
+    isEmpathized,
     onEmpathyClick,
 } : PostCardProps){
     return( 
@@ -21,7 +23,13 @@ export default function PostCard({
             <button
                 type="button"
                 onClick={onEmpathyClick}
-                className="rounded-full px-2 py-1 hover:bg-gray-100">
+                className={`rounded-full px-2 py-1 transition ${
+                    isEmpathized
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "text-gray-500 hover:bg-gray-100"
+                }`}
+             >
+                          
             🌱 공감 {empathyCount}
             </button>
             
