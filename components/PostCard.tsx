@@ -4,7 +4,11 @@ type PostCardProps ={
   cheerCount: number;
   smileCount: number;
   isEmpathized : boolean;
+  isCheered : boolean;
+  isSmiled : boolean;
   onEmpathyClick : () => void;
+  onCheerClick : () => void;
+  onSmileClick : () => void
 }
 
 export default function PostCard({
@@ -13,7 +17,11 @@ export default function PostCard({
     cheerCount,
     smileCount,
     isEmpathized,
+    isCheered,
+    isSmiled,
     onEmpathyClick,
+    onCheerClick,
+    onSmileClick,
 } : PostCardProps){
     return( 
         <div className="rounded-2xl border bg-white p-4">
@@ -34,9 +42,33 @@ export default function PostCard({
             </button>
             
             <span>·</span>  
-            <span>💪 응원 {cheerCount}</span>
+            
+            <button
+                type="button"
+                onClick={onCheerClick}
+                className={`rounded-full px-2 py-1 transition ${
+                    isCheered
+                        ? "bg-blue-100 text-blue-700"
+                        : "text-gray-500 hover:bg-gray-100"
+                }`}
+            >
+                💪 응원 {cheerCount}
+            </button>    
+            
             <span>·</span>
-            <span>😊 미소 {smileCount}</span>                                 
+
+             <button
+                type="button"
+                onClick={onSmileClick}
+                className={`rounded-full px-2 py-1 transition ${
+                    isSmiled
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "text-gray-500 hover:bg-gray-100"
+                }`}
+            >
+                😊 미소 {smileCount}  
+             </button>               
+                                       
             </div>
         </div>
     );

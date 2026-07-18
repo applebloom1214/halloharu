@@ -10,6 +10,8 @@ type Post = {
   cheerCount : number;
   smileCount : number;
   isEmpathized : boolean;
+  isCheered: boolean;
+  isSmiled: boolean;
 };
 
 export default function Home() {
@@ -22,6 +24,8 @@ export default function Home() {
       cheerCount : 3,
       smileCount :5,
       isEmpathized :false,
+      isCheered : false,
+      isSmiled : false,
     },
     {
       id :2,
@@ -30,6 +34,8 @@ export default function Home() {
       cheerCount : 6,
       smileCount :2,
       isEmpathized : false,
+      isCheered : false,
+      isSmiled : false,
     },
   ]);
 
@@ -48,6 +54,8 @@ export default function Home() {
         cheerCount : 0,
         smileCount :0,
         isEmpathized : false,
+        isCheered : false,
+        isSmiled : false,
       },
       ...previousPosts,
     ]);
@@ -74,6 +82,47 @@ export default function Home() {
       }),
     );
   };
+
+  const handleCheer = (postId : number) =>{
+
+    setPosts((previousPosts) =>
+
+      previousPosts.map( (post) => {
+        if (post.id !== postId){
+          return post;
+        }
+
+        return{
+          ...post,
+          cheerCount : post.isCheered
+            ? post.cheerCount -1
+            : post.cheerCount + 1,
+            isCheered : !post.isCheered,
+        };
+      }),
+    );
+  };  
+
+
+  const handleSmile = (postId : number) =>{
+
+    setPosts((previousPosts) =>
+
+      previousPosts.map( (post) => {
+        if (post.id !== postId){
+          return post;
+        }
+
+        return{
+          ...post,
+          smileCount : post.isSmiled
+            ? post.smileCount -1
+            : post.smileCount + 1,
+            isSmiled : !post.isSmiled,
+        };
+      }),
+    );
+  };   
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#333333]">
@@ -134,7 +183,11 @@ export default function Home() {
               cheerCount={post.cheerCount}
               smileCount={post.smileCount}
               isEmpathized = {post.isEmpathized}
+              isCheered = {post.isCheered}
+              isSmiled = {post.isSmiled}
               onEmpathyClick = {()=> handleEmpathy(post.id)}
+              onCheerClick = {()=> handleCheer(post.id)}
+              onSmileClick={() => handleSmile(post.id)}
               />   
             ))}      
           </div>
