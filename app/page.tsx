@@ -39,7 +39,7 @@ export default function Home() {
     },
   ]);
 
-  const handleSummit =() => {
+  const handleSubmit =() => {
     const trimmedContent = content.trim();
 
     if(trimmedContent === ""){
@@ -164,7 +164,7 @@ export default function Home() {
 
           <div className="mt-4 flex justify-end">
             <button 
-              onClick={handleSummit}
+              onClick={handleSubmit}
               className="rounded-full bg-emerald-400 px-5 py-2 font-semibold text-white">
               하루 남기기
             </button>
