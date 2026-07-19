@@ -122,7 +122,13 @@ export default function Home() {
         };
       }),
     );
-  };   
+  };
+  
+  const handleDelete = (postId : number) =>{
+    setPosts((previousPosts) =>
+      previousPosts.filter((post)=> post.id !== postId),
+    );
+  };
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#333333]">
@@ -188,6 +194,7 @@ export default function Home() {
               onEmpathyClick = {()=> handleEmpathy(post.id)}
               onCheerClick = {()=> handleCheer(post.id)}
               onSmileClick={() => handleSmile(post.id)}
+              onDeleteClick = {()=> handleDelete(post.id)}
               />   
             ))}      
           </div>

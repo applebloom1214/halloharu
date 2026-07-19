@@ -8,7 +8,8 @@ type PostCardProps ={
   isSmiled : boolean;
   onEmpathyClick : () => void;
   onCheerClick : () => void;
-  onSmileClick : () => void
+  onSmileClick : () => void;
+  onDeleteClick : () => void;
 }
 
 export default function PostCard({
@@ -22,12 +23,25 @@ export default function PostCard({
     onEmpathyClick,
     onCheerClick,
     onSmileClick,
+    onDeleteClick,
 } : PostCardProps){
     return( 
         <div className="rounded-2xl border bg-white p-4">
-            <p className="whitespace-pre-wrap break-words">
-                {content}
-            </p>
+            
+            <div className="flex items-start justify-between gap-4">
+                <p className="min-w-0 whitespace-pre-wrap break-words">
+                    {content}
+                </p>
+
+                <button
+                    type="button"
+                    onClick={onDeleteClick}
+                    className="shrinnk-0 text-sm text-gray-400 transition hover:text-red-500"
+                >
+                    삭제
+                </button>
+            </div>
+            
 
             <div className="mt-3 text-sm text-gray-500">
             <button
