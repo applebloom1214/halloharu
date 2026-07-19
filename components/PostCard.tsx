@@ -25,7 +25,9 @@ export default function PostCard({
 } : PostCardProps){
     return( 
         <div className="rounded-2xl border bg-white p-4">
-            <p>{content}</p>
+            <p className="whitespace-pre-wrap break-words">
+                {content}
+            </p>
 
             <div className="mt-3 text-sm text-gray-500">
             <button
