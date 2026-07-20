@@ -12,6 +12,7 @@ type Post = {
   isEmpathized : boolean;
   isCheered: boolean;
   isSmiled: boolean;
+  createdAt : string;
 };
 
 export default function Home() {
@@ -26,6 +27,7 @@ export default function Home() {
       isEmpathized :false,
       isCheered : false,
       isSmiled : false,
+      createdAt : "2026-07-20T09:10:00+09:00",
     },
     {
       id :2,
@@ -36,6 +38,7 @@ export default function Home() {
       isEmpathized : false,
       isCheered : false,
       isSmiled : false,
+      createdAt : "2026-07-19T21:30:00+09:00",      
     },
   ]);
 
@@ -56,6 +59,7 @@ export default function Home() {
         isEmpathized : false,
         isCheered : false,
         isSmiled : false,
+        createdAt : new Date().toISOString(),
       },
       ...previousPosts,
     ]);
@@ -185,6 +189,7 @@ export default function Home() {
               <PostCard 
               key={post.id} 
               content={post.content}
+              createdAt ={post.createdAt}
               empathyCount={post.empathyCount}
               cheerCount={post.cheerCount}
               smileCount={post.smileCount}
