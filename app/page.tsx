@@ -15,6 +15,8 @@ type Post = {
   createdAt : string;
 };
 
+const MAX_CONTENT_LENGTH = 300;
+
 export default function Home() {
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([
@@ -168,17 +170,31 @@ export default function Home() {
           <textarea
             value={content}
             onChange={(event) => setContent(event.target.value)}
+            maxLength={MAX_CONTENT_LENGTH}
             className="h-32 w-full resize-none rounded-xl border p-4 outline-none focus:border-emerald-400"
             placeholder="오늘은 어떤 하루였나요?"
           />
 
-          <div className="mt-4 flex justify-end">
-            <button 
+          <div className="mt-4 flex item-center justify-between">
+            <span className="text-sm text-gray-400">
+              {content.length} / {MAX_CONTENT_LENGTH}
+            </span>
+
+            <button
+              type="button" 
               onClick={handleSubmit}
-              className="rounded-full bg-emerald-400 px-5 py-2 font-semibold text-white">
+              disabled ={content.trim() === ""}
+              className={`rounded-full px-5 py-2 font-semibold text-white transition ${
+                content.trim() === ""
+                ? "cursor-not-allowed bg-gray-300"
+                : "bg-emerald-400 hover:bg-emerald-500"
+              }`}
+            >
               하루 남기기
             </button>
           </div>
+
+
         </div>
 
         <div className="mt-12 text-left">

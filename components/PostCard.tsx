@@ -68,7 +68,7 @@ export default function PostCard({
                 <button
                     type="button"
                     onClick={onDeleteClick}
-                    className="shrinnk-0 text-sm text-gray-400 transition hover:text-red-500"
+                    className="shrinnk-0 whitespace-nowrap text-sm text-gray-400 transition hover:text-red-500"
                 >
                     삭제
                 </button>
