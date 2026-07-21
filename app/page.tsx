@@ -118,6 +118,25 @@ export default function Home() {
     );
   };
 
+  const handleUpdate = (postId : number, updatedContent:string) =>{
+    const trimmedContent = updatedContent.trim();
+
+    if(trimmedContent === ""){
+      return;
+    }
+
+    setPosts((previousPosts) =>
+      previousPosts.map((post)=>
+        post.id === postId
+          ?{
+            ...post,
+            content : trimmedContent,
+           }
+          : post, 
+      ),
+    );
+  };
+
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#333333]">
       <header className="flex items-center justify-between border-b bg-white px-6 py-4">
@@ -198,6 +217,9 @@ export default function Home() {
               onCheerClick = {()=> handleReaction(post.id, "cheer")}
               onSmileClick={() => handleReaction(post.id, "smile")}
               onDeleteClick = {()=> handleDelete(post.id)}
+              onUpdate ={(updatedContent) =>
+                handleUpdate(post.id, updatedContent)
+              }
               />   
             ))}      
           </div>
