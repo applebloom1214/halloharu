@@ -15,6 +15,8 @@ type Post = {
   createdAt : string;
 };
 
+type ReactionType = "empathy" | "cheer" | "smile";
+
 const MAX_CONTENT_LENGTH = 300;
 
 export default function Home() {
@@ -69,63 +71,43 @@ export default function Home() {
     setContent("");
   };
 
-  const handleEmpathy = (postId : number) =>{
-
+  const handleReaction =(
+    postId : number,
+    reactionType : ReactionType,
+  ) => {
     setPosts((previousPosts) =>
-
-      previousPosts.map( (post) => {
-        if (post.id !== postId){
+      previousPosts.map((post) =>{
+        if(post.id !== postId){
           return post;
         }
 
-        return{
-          ...post,
-          empathyCount : post.isEmpathized
+        if(reactionType === "empathy"){
+          return{
+            ...post,
+            empathyCount : post.isEmpathized
             ? post.empathyCount -1
-            : post.empathyCount + 1,
+            : post.empathyCount +1,
             isEmpathized : !post.isEmpathized,
-        };
-      }),
-    );
-  };
-
-  const handleCheer = (postId : number) =>{
-
-    setPosts((previousPosts) =>
-
-      previousPosts.map( (post) => {
-        if (post.id !== postId){
-          return post;
+          };
         }
 
-        return{
-          ...post,
-          cheerCount : post.isCheered
+        if(reactionType === "cheer"){
+          return{
+            ...post,
+            cheerCount : post.isCheered
             ? post.cheerCount -1
-            : post.cheerCount + 1,
+            : post.cheerCount +1,
             isCheered : !post.isCheered,
-        };
-      }),
-    );
-  };  
-
-
-  const handleSmile = (postId : number) =>{
-
-    setPosts((previousPosts) =>
-
-      previousPosts.map( (post) => {
-        if (post.id !== postId){
-          return post;
+          };
         }
-
-        return{
-          ...post,
-          smileCount : post.isSmiled
+        
+          return{
+            ...post,
+            smileCount : post.isSmiled
             ? post.smileCount -1
-            : post.smileCount + 1,
+            : post.smileCount +1,
             isSmiled : !post.isSmiled,
-        };
+          };        
       }),
     );
   };
@@ -212,9 +194,9 @@ export default function Home() {
               isEmpathized = {post.isEmpathized}
               isCheered = {post.isCheered}
               isSmiled = {post.isSmiled}
-              onEmpathyClick = {()=> handleEmpathy(post.id)}
-              onCheerClick = {()=> handleCheer(post.id)}
-              onSmileClick={() => handleSmile(post.id)}
+              onEmpathyClick = {()=> handleReaction(post.id, "empathy")}
+              onCheerClick = {()=> handleReaction(post.id, "cheer")}
+              onSmileClick={() => handleReaction(post.id, "smile")}
               onDeleteClick = {()=> handleDelete(post.id)}
               />   
             ))}      
