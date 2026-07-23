@@ -1,6 +1,8 @@
 "use client";
 import Image from "next/image";
+
 import { useState } from "react";
+
 import PostCard from "../components/PostCard";
 
 type Post = {
@@ -20,6 +22,7 @@ type ReactionType = "empathy" | "cheer" | "smile";
 const MAX_CONTENT_LENGTH = 300;
 
 export default function Home() {
+
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([
     {
