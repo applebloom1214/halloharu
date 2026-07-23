@@ -1,9 +1,10 @@
 "use client";
 import Image from "next/image";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import PostCard from "../components/PostCard";
+import { createClient } from "@/lib/supabase/client";
 
 type Post = {
   id : number;
@@ -17,6 +18,15 @@ type Post = {
   createdAt : string;
 };
 
+type DatabasePost ={
+  id : number;
+  content : string;
+  empathy_count : number;
+  cheer_count : number;
+  smile_count : number;
+  created_at : string;
+};
+
 type ReactionType = "empathy" | "cheer" | "smile";
 
 const MAX_CONTENT_LENGTH = 300;
@@ -24,30 +34,49 @@ const MAX_CONTENT_LENGTH = 300;
 export default function Home() {
 
   const [content, setContent] = useState("");
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id :1,
-      content :  "오늘은 별일 없었지만 퇴근길 바람이 좋았다.",
-      empathyCount :12 ,
-      cheerCount : 3,
-      smileCount :5,
-      isEmpathized :false,
-      isCheered : false,
-      isSmiled : false,
-      createdAt : "2026-07-20T09:10:00+09:00",
-    },
-    {
-      id :2,
-      content :  "아무것도 안 한 것 같지만 그래도 하루를 버텼다.",
-      empathyCount :8 ,
-      cheerCount : 6,
-      smileCount :2,
-      isEmpathized : false,
-      isCheered : false,
-      isSmiled : false,
-      createdAt : "2026-07-19T21:30:00+09:00",      
-    },
-  ]);
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  useEffect(() =>{
+    const fetchPosts = async () =>{
+      const supabase = createClient();
+
+      const {data, error} = await supabase
+        .from("posts")
+        .select(`
+          id,
+          content,
+          empathy_count,
+          cheer_count,
+          smile_count,
+          created_at
+          `)
+          .order("created_at", {ascending:false})
+          .order("id", {ascending:false});
+
+          if(error){
+            console.error("게시글 불러오기 실퍠:", error);
+            return;
+          }
+
+          const databasePosts =(data ?? []) as DatabasePost[];
+
+          const convertedPosts : Post[] = databasePosts.map((post) => ({
+            id : post.id,
+            content : post.content,
+            empathyCount : post.empathy_count,
+            cheerCount : post.cheer_count,
+            smileCount : post.smile_count,
+            isEmpathized :false,
+            isCheered : false,
+            isSmiled : false,
+            createdAt : post.created_at,
+          }));
+
+          setPosts(convertedPosts);
+    };
+
+    fetchPosts();
+  },[]);
 
   const handleSubmit =() => {
     const trimmedContent = content.trim();
