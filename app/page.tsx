@@ -35,6 +35,7 @@ export default function Home() {
 
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() =>{
     const fetchPosts = async () =>{
@@ -78,29 +79,66 @@ export default function Home() {
     fetchPosts();
   },[]);
 
-  const handleSubmit =() => {
+  const handleSubmit = async () =>{
     const trimmedContent = content.trim();
 
-    if(trimmedContent === ""){
+    if(trimmedContent === "" || isSubmitting){
       return;
     }
 
-    setPosts((previousPosts) => [
-      {
-        id : Date.now(),
-        content : trimmedContent,
-        empathyCount :0 ,
-        cheerCount : 0,
-        smileCount :0,
+    setIsSubmitting(true);
+
+    try{
+      const supabase = createClient();
+
+      const {data, error} = await supabase
+        .from("posts")
+        .insert({
+          content : trimmedContent,
+        })
+        .select(`
+          id,
+          content,
+          empathy_count,
+          cheer_count,
+          smile_count,
+          created_at
+        `)
+        .single();
+
+      if(error){
+        console.error("저장된 게시글을 받지 못했습니다.");
+        return;
+      }  
+
+      if(!data){
+        console.error("저장된 게시글을 받지 못했습니다.");
+        return;
+      }
+
+      const databasePost = data as DatabasePost;
+
+      const newPost : Post ={
+        id : databasePost.id,
+        content : databasePost.content,
+        empathyCount : databasePost.empathy_count,
+        cheerCount : databasePost.cheer_count,
+        smileCount : databasePost.smile_count,
         isEmpathized : false,
         isCheered : false,
         isSmiled : false,
-        createdAt : new Date().toISOString(),
-      },
-      ...previousPosts,
-    ]);
+        createdAt : databasePost.created_at,
+      };
 
-    setContent("");
+      setPosts((previousPosts) => [
+        newPost,
+        ...previousPosts,
+      ]);
+
+      setContent("");
+    } finally{
+      setIsSubmitting(false);
+    }
   };
 
   const handleReaction =(
@@ -216,14 +254,14 @@ export default function Home() {
             <button
               type="button" 
               onClick={handleSubmit}
-              disabled ={content.trim() === ""}
+              disabled ={content.trim() === "" || isSubmitting}
               className={`rounded-full px-5 py-2 font-semibold text-white transition ${
-                content.trim() === ""
+                content.trim() === "" || isSubmitting
                 ? "cursor-not-allowed bg-gray-300"
                 : "bg-emerald-400 hover:bg-emerald-500"
               }`}
             >
-              하루 남기기
+              {isSubmitting ? "저장 중..." : "하루 남기기"}
             </button>
           </div>
 
