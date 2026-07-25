@@ -243,7 +243,7 @@ export default function Home() {
             onChange={(event) => setContent(event.target.value)}
             maxLength={MAX_CONTENT_LENGTH}
             className="h-32 w-full resize-none rounded-xl border p-4 outline-none focus:border-emerald-400"
-            placeholder="오늘은 어떤 하루였나요?"
+            placeholder="오늘은 어떤 하루였나요? ^^"
           />
 
           <div className="mt-4 flex item-center justify-between">
