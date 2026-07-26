@@ -13,7 +13,7 @@ type PostCardProps ={
   onCheerClick : () => void;
   onSmileClick : () => void;
   onDeleteClick : () => void;
-  onUpdate : (updatedContent : string) => void;
+  onUpdate : (updatedContent : string) => Promise<boolean>;
 }
 
 export default function PostCard({
@@ -34,16 +34,29 @@ export default function PostCard({
 
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] =useState(content);
+    const [isSaving, setIsSaving] = useState(false);
 
-    const handleSave = () =>{
+    const handleSave = async () =>{
         const trimmedContent = editedContent.trim();
 
-        if(trimmedContent === ""){
+        if(trimmedContent === "" || isSaving){
             return;
         }
 
-        onUpdate(trimmedContent);
-        setIsEditing(false);
+        setIsSaving(true);
+
+        try{
+            const isUpdated = await onUpdate(trimmedContent);
+
+            if(!isUpdated){
+                return;
+            }
+
+            setEditedContent(trimmedContent);
+            setIsEditing(false);
+        }finally{
+            setIsSaving(false);
+        }
     };
 
     const handleCancel = ()=>{
@@ -94,7 +107,8 @@ export default function PostCard({
                                     <button
                                         type="button"
                                         onClick={handleCancel}
-                                        className="rounded-full border px-3 py-1 text-sm text-gray-500"
+                                        disabled={isSaving}
+                                        className="rounded-full border px-3 py-1 text-sm text-gray-500 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         취소    
                                     </button>
@@ -102,14 +116,14 @@ export default function PostCard({
                                     <button
                                         type="button"
                                         onClick={handleSave}
-                                        disabled={editedContent.trim() === ""}
+                                        disabled={editedContent.trim() === "" || isSaving}
                                         className={`rounded-full px-3 py-1 text-sm text-white transition-colors ${
-                                         editedContent.trim() === ""
+                                         editedContent.trim() === "" || isSaving
                                           ? "cursor-not-allowed bg-gray-300"
                                           : "bg-emerald-400 hover:bg-emerald-500"
                                                  }`}  
                                     >
-                                        저장    
+                                        {isSaving ? "저장 중..." : "저장"}    
                                     </button>             
                                 </div>
                             </div>            

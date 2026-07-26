@@ -208,12 +208,33 @@ export default function Home() {
     );
   };
 
-  const handleUpdate = (postId : number, updatedContent:string) =>{
+  const handleUpdate = async (
+    postId : number,
+    updatedContent:string,
+  ) : Promise<boolean> =>{
     const trimmedContent = updatedContent.trim();
 
     if(trimmedContent === ""){
-      return;
+      return false;
     }
+
+    const supabase = createClient();
+
+    const {data , error} = await supabase
+      .from("posts")
+      .update({
+        content : trimmedContent,
+      })
+      .eq("id", postId)
+      .select("content")
+      .single();
+
+      if(error){
+        console.error("게시글 수정 실패:", error);
+        return false;
+      }
+
+
 
     setPosts((previousPosts) =>
       previousPosts.map((post)=>
@@ -225,6 +246,8 @@ export default function Home() {
           : post, 
       ),
     );
+
+    return true;
   };
 
   return (
