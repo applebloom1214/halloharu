@@ -141,44 +141,89 @@ export default function Home() {
     }
   };
 
-  const handleReaction =(
+  const handleReaction = async (
     postId : number,
     reactionType : ReactionType,
   ) => {
+    const targetPost = posts.find((post) => post.id === postId);
+
+    if(!targetPost){
+      return;
+    }
+
+    let reactionColumn:
+      | "empathy_count"
+      | "cheer_count"
+      | "smile_count";
+    
+    let nextCount : number;
+    
+    if(reactionType === "empathy"){
+      reactionColumn = "empathy_count";
+
+      nextCount = targetPost.isEmpathized
+        ? Math.max(targetPost.empathyCount -1, 0)
+        : targetPost.empathyCount +1;
+    }else if(reactionType === "cheer"){
+      reactionColumn = "cheer_count";
+
+      nextCount = targetPost.isCheered
+        ? Math.max(targetPost.cheerCount -1, 0)
+        : targetPost.cheerCount +1;
+    } else{
+      reactionColumn = "smile_count";
+
+      nextCount = targetPost.isSmiled
+        ? Math.max(targetPost.smileCount -1, 0)
+        : targetPost.smileCount +1;
+    }
+
+    const supabase = createClient();
+
+    const {data, error} = await supabase
+      .from("posts")
+      .update({
+        [reactionColumn] : nextCount,
+      })
+      .eq("id", postId)
+      .select(`
+          empathy_count,
+          cheer_count,
+          smile_count
+        `)
+      .single();
+      
+    if(error){
+      console.error("리액션 변경 실패:", error);
+      return
+    }
+
     setPosts((previousPosts) =>
-      previousPosts.map((post) =>{
-        if(post.id !== postId){
-          return post;
-        }
+      previousPosts.map((post) =>
+        post.id === postId
+          ? {
+            ...post,
+            empathyCount : data.empathy_count,
+            cheerCount : data.cheer_count,
+            smileCount : data.smile_count,
 
-        if(reactionType === "empathy"){
-          return{
-            ...post,
-            empathyCount : post.isEmpathized
-            ? post.empathyCount -1
-            : post.empathyCount +1,
-            isEmpathized : !post.isEmpathized,
-          };
-        }
+            isEmpathized:
+              reactionType === "empathy"
+                ? !post.isEmpathized
+                : post.isEmpathized,
 
-        if(reactionType === "cheer"){
-          return{
-            ...post,
-            cheerCount : post.isCheered
-            ? post.cheerCount -1
-            : post.cheerCount +1,
-            isCheered : !post.isCheered,
-          };
-        }
-        
-          return{
-            ...post,
-            smileCount : post.isSmiled
-            ? post.smileCount -1
-            : post.smileCount +1,
-            isSmiled : !post.isSmiled,
-          };        
-      }),
+            isCheered:
+              reactionType === "cheer"
+                ? !post.isCheered
+                : post.isCheered,
+                
+            isSmiled:
+              reactionType === "smile"
+                ? !post.isSmiled
+                : post.isSmiled,    
+          }
+          :post,          
+      ),
     );
   };
   
