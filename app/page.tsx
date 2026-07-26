@@ -182,9 +182,29 @@ export default function Home() {
     );
   };
   
-  const handleDelete = (postId : number) =>{
-    setPosts((previousPosts) =>
-      previousPosts.filter((post)=> post.id !== postId),
+  const handleDelete = async (postId : number) =>{
+    const shouldDelete = window.confirm(
+      "이 게시글을 정말 삭제하시겠습니까 ?",
+    );
+
+    if(!shouldDelete){
+      return;
+    }
+
+    const supabase = createClient();
+
+    const {error} = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", postId);
+
+    if(error) {
+      console.error("게시글 삭제 실퍠:", error);
+      return;
+    }  
+
+    setPosts((previousPosts)=>
+      previousPosts.filter((post) => post.id !== postId),
     );
   };
 
