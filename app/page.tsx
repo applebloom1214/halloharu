@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 
 import { useEffect, useState } from "react";
 
@@ -310,9 +311,11 @@ export default function Home() {
           <button className="rounded-full border px-4 py-2 text-sm">
             로그인
           </button>
-          <button className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-white">
+          <Link
+            href="/signup" 
+            className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-white">
             회원가입
-          </button>
+          </Link>
         </div>
       </header>
 
