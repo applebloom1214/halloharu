@@ -2,11 +2,10 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import PostCard from "../components/PostCard";
 import { createClient } from "@/lib/supabase/client";
-import { Faculty_Glyphic } from "next/font/google";
 
 type Post = {
   id: number;
