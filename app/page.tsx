@@ -2,10 +2,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 
 import PostCard from "../components/PostCard";
 import { createClient } from "@/lib/supabase/client";
+import { Faculty_Glyphic } from "next/font/google";
 
 type Post = {
   id: number;
@@ -36,6 +37,10 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -80,6 +85,43 @@ export default function Home() {
 
     fetchPosts();
   }, []);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const supabase = createClient();
+
+      try {
+        const { data } = await supabase.auth.getUser();
+
+        setUserEmail(data.user?.email ?? null);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const handleLogout = async () => {
+    if (isSigningOut) {
+      return;
+    }
+
+    setIsSigningOut(true);
+
+    const supabase = createClient();
+
+    const { error } = await supabase.auth.signOut({
+      scope: "local",
+    });
+
+    if (error) {
+      console.error("로그아웃 실패:", error);
+      setIsSigningOut(false);
+      return;
+    }
+
+    window.location.href = "/";
+  };
 
   const handleSubmit = async () => {
     const trimmedContent = content.trim();
@@ -292,16 +334,44 @@ export default function Home() {
           className="h-11 w-auto"
         />
 
-        <div className="flex gap-2">
-          <Link href="/login" className="rounded-full border px-4 py-2 text-sm">
-            로그인
-          </Link>
-          <Link
-            href="/signup"
-            className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-white"
-          >
-            회원가입
-          </Link>
+        <div className="flex items-center gap-2">
+          {isAuthLoading ? (
+            <span className="text-sm text-gray-400">확인 중...</span>
+          ) : userEmail ? (
+            <>
+              <span className="hidden max-w-48 truncate text-sm text-gray-500 sm:inline">
+                {userEmail}
+              </span>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isSigningOut}
+                className={`rounded-full border px-4 py-2 text-sm transition ${
+                  isSigningOut
+                    ? "cursor-not-allowed text-gray-300"
+                    : "text-gray-600 hover:border-red-300 hover:text-red-500"
+                }`}
+              >
+                {isSigningOut ? "로그아웃 중..." : "로그아웃"}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="rounded-full border px-4 py-2 text-sm"
+              >
+                로그인
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-white"
+              >
+                회원가입
+              </Link>
+            </>
+          )}
         </div>
       </header>
 
