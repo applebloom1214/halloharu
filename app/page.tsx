@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Post = {
   id: number;
+  userId : string | null;
   content: string;
   empathyCount: number;
   cheerCount: number;
@@ -21,6 +22,7 @@ type Post = {
 
 type DatabasePost = {
   id: number;
+  user_id : string | null;
   content: string;
   empathy_count: number;
   cheer_count: number;
@@ -38,6 +40,7 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -50,6 +53,7 @@ export default function Home() {
         .select(
           `
           id,
+          user_id,
           content,
           empathy_count,
           cheer_count,
@@ -69,6 +73,7 @@ export default function Home() {
 
       const convertedPosts: Post[] = databasePosts.map((post) => ({
         id: post.id,
+        userId : post.user_id,
         content: post.content,
         empathyCount: post.empathy_count,
         cheerCount: post.cheer_count,
@@ -93,6 +98,7 @@ export default function Home() {
         const { data } = await supabase.auth.getUser();
 
         setUserEmail(data.user?.email ?? null);
+        setUserId(data.user?.id ?? null);
       } finally {
         setIsAuthLoading(false);
       }
@@ -129,6 +135,11 @@ export default function Home() {
       return;
     }
 
+    if (!userId){
+      console.error("로그인한 사용자만 게시글을 저장할 수 있습니다.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -138,10 +149,12 @@ export default function Home() {
         .from("posts")
         .insert({
           content: trimmedContent,
+          user_id : userId,
         })
         .select(
           `
           id,
+          user_id,
           content,
           empathy_count,
           cheer_count,
@@ -152,7 +165,7 @@ export default function Home() {
         .single();
 
       if (error) {
-        console.error("저장된 게시글을 받지 못했습니다.");
+        console.error("게시글 저장 실퍠:", error);
         return;
       }
 
@@ -165,6 +178,7 @@ export default function Home() {
 
       const newPost: Post = {
         id: databasePost.id,
+        userId : databasePost.user_id,
         content: databasePost.content,
         empathyCount: databasePost.empathy_count,
         cheerCount: databasePost.cheer_count,
@@ -176,7 +190,6 @@ export default function Home() {
       };
 
       setPosts((previousPosts) => [newPost, ...previousPosts]);
-
       setContent("");
     } finally {
       setIsSubmitting(false);
