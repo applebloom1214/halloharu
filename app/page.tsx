@@ -394,6 +394,13 @@ export default function Home() {
           부담 없이 기록하고, 가볍게 공감받는 하루 기록 공간
         </p>
 
+      {isAuthLoading ?(
+        <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
+          <p className="text-sm text-gray-400">
+            로그인 상태를 확인하고 있습니다...
+          </p>
+        </div>   
+        ) : userId ?(
         <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
           <textarea
             value={content}
@@ -402,8 +409,8 @@ export default function Home() {
             className="h-32 w-full resize-none rounded-xl border p-4 outline-none focus:border-emerald-400"
             placeholder="오늘은 어떤 하루였나요? ^^"
           />
-
-          <div className="mt-4 flex item-center justify-between">
+        
+          <div className="mt-4 flex items-center justify-between">
             <span className="text-sm text-gray-400">
               {content.length} / {MAX_CONTENT_LENGTH}
             </span>
@@ -421,8 +428,21 @@ export default function Home() {
               {isSubmitting ? "저장 중..." : "하루 남기기"}
             </button>
           </div>
-        </div>
+        </div>  
+        ) :(
+           <div className="mt-10 rounded-2xl border bg-white p-8 shadow-sm">
+              <p className="text-gray-600">
+               하루를 남기려면 로그인이 필요합니다.
+              </p>
 
+            <Link
+              href="/login"
+              className="mt-4 inline-block rounded-full bg-emerald-400 px-5 py-2 font-semibold text-white transition hover:bg-emerald-500"
+            >
+              로그인하고 하루 남기기
+            </Link>
+            </div>
+        ) }          
         <div className="mt-12 text-left">
           <h3 className="mb-4 text-lg font-semibold">최근 올라온 하루</h3>
 
