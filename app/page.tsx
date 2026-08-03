@@ -458,6 +458,7 @@ export default function Home() {
                 isEmpathized={post.isEmpathized}
                 isCheered={post.isCheered}
                 isSmiled={post.isSmiled}
+                canManage={userId !== null && post.userId === userId}
                 onEmpathyClick={() => handleReaction(post.id, "empathy")}
                 onCheerClick={() => handleReaction(post.id, "cheer")}
                 onSmileClick={() => handleReaction(post.id, "smile")}

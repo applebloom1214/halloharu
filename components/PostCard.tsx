@@ -9,12 +9,14 @@ type PostCardProps ={
   isEmpathized : boolean;
   isCheered : boolean;
   isSmiled : boolean;
+  canManage : boolean;
+  // true - 이 게시글을 수정,삭제할 수 있음 false - 수정,삭제할 수 없음
   onEmpathyClick : () => void;
   onCheerClick : () => void;
   onSmileClick : () => void;
   onDeleteClick : () => void;
   onUpdate : (updatedContent : string) => Promise<boolean>;
-}
+};
 
 export default function PostCard({
     content,
@@ -25,6 +27,7 @@ export default function PostCard({
     isEmpathized,
     isCheered,
     isSmiled,
+    canManage,
     onEmpathyClick,
     onCheerClick,
     onSmileClick,
@@ -144,7 +147,7 @@ export default function PostCard({
                     )}  
                 </div>
 
-                {!isEditing && (
+                {!isEditing && canManage &&(
                     <div className="flex shrink-0 gap-2">
                         <button
                             type="button"
