@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Post = {
   id: number;
-  userId : string | null;
+  userId: string | null;
   content: string;
   empathyCount: number;
   cheerCount: number;
@@ -22,15 +22,21 @@ type Post = {
 
 type DatabasePost = {
   id: number;
-  user_id : string | null;
+  user_id: string | null;
   content: string;
   empathy_count: number;
   cheer_count: number;
   smile_count: number;
   created_at: string;
+  reactions?: DatabaseReaction[];
 };
 
 type ReactionType = "empathy" | "cheer" | "smile";
+
+type DatabaseReaction = {
+  user_id: string;
+  reaction_type: ReactionType;
+};
 
 const MAX_CONTENT_LENGTH = 300;
 
@@ -45,6 +51,10 @@ export default function Home() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
     const fetchPosts = async () => {
       const supabase = createClient();
 
@@ -58,7 +68,11 @@ export default function Home() {
           empathy_count,
           cheer_count,
           smile_count,
-          created_at
+          created_at,
+          reactions(
+            user_id,
+            reaction_type
+          )
           `,
         )
         .order("created_at", { ascending: false })
@@ -71,24 +85,63 @@ export default function Home() {
 
       const databasePosts = (data ?? []) as DatabasePost[];
 
-      const convertedPosts: Post[] = databasePosts.map((post) => ({
-        id: post.id,
-        userId : post.user_id,
-        content: post.content,
-        empathyCount: post.empathy_count,
-        cheerCount: post.cheer_count,
-        smileCount: post.smile_count,
-        isEmpathized: false,
-        isCheered: false,
-        isSmiled: false,
-        createdAt: post.created_at,
-      }));
+      const convertedPosts: Post[] = databasePosts.map((post) => {
+        const reactions = post.reactions ?? [];
+
+        const empathyCount = reactions.filter(
+          (reaction) => reaction.reaction_type === "empathy",
+        ).length;
+
+        const cheerCount = reactions.filter(
+          (reaction) => reaction.reaction_type === "cheer",
+        ).length;
+
+        const smileCount = reactions.filter(
+          (reaction) => reaction.reaction_type === "smile",
+        ).length;
+
+        const isEmpathized =
+          userId !== null &&
+          reactions.some(
+            (reaction) =>
+              reaction.user_id === userId &&
+              reaction.reaction_type === "empathy",
+          );
+
+        const isCheered =
+          userId !== null &&
+          reactions.some(
+            (reaction) =>
+              reaction.user_id === userId && 
+              reaction.reaction_type === "cheer",
+          );
+
+        const isSmiled =
+          userId !== null &&
+          reactions.some(
+            (reaction) =>
+              reaction.user_id === userId && reaction.reaction_type === "smile",
+          );
+
+        return {
+          id: post.id,
+          userId: post.user_id,
+          content: post.content,
+          empathyCount,
+          cheerCount,
+          smileCount,
+          isEmpathized,
+          isCheered,
+          isSmiled,
+          createdAt: post.created_at,
+        };
+      });
 
       setPosts(convertedPosts);
     };
 
     fetchPosts();
-  }, []);
+  }, [isAuthLoading, userId]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -135,7 +188,7 @@ export default function Home() {
       return;
     }
 
-    if (!userId){
+    if (!userId) {
       console.error("로그인한 사용자만 게시글을 저장할 수 있습니다.");
       return;
     }
@@ -149,7 +202,7 @@ export default function Home() {
         .from("posts")
         .insert({
           content: trimmedContent,
-          user_id : userId,
+          user_id: userId,
         })
         .select(
           `
@@ -178,7 +231,7 @@ export default function Home() {
 
       const newPost: Post = {
         id: databasePost.id,
-        userId : databasePost.user_id,
+        userId: databasePost.user_id,
         content: databasePost.content,
         empathyCount: databasePost.empathy_count,
         cheerCount: databasePost.cheer_count,
@@ -196,81 +249,78 @@ export default function Home() {
     }
   };
 
-  const handleReaction = async (postId: number, reactionType: ReactionType) => {
+  const handleReaction = async (
+    postId: number,
+    reactionType: ReactionType,
+  ) => {
+    if(!userId){
+      window.alert("리액션을 남기려면 로그인이 필요합니다.");
+      return;
+    }
+
     const targetPost = posts.find((post) => post.id === postId);
 
     if (!targetPost) {
       return;
     }
 
-    let reactionColumn: "empathy_count" | "cheer_count" | "smile_count";
-
-    let nextCount: number;
-
-    if (reactionType === "empathy") {
-      reactionColumn = "empathy_count";
-
-      nextCount = targetPost.isEmpathized
-        ? Math.max(targetPost.empathyCount - 1, 0)
-        : targetPost.empathyCount + 1;
-    } else if (reactionType === "cheer") {
-      reactionColumn = "cheer_count";
-
-      nextCount = targetPost.isCheered
-        ? Math.max(targetPost.cheerCount - 1, 0)
-        : targetPost.cheerCount + 1;
-    } else {
-      reactionColumn = "smile_count";
-
-      nextCount = targetPost.isSmiled
-        ? Math.max(targetPost.smileCount - 1, 0)
-        : targetPost.smileCount + 1;
-    }
+    const isSelected =
+      reactionType === "empathy"
+        ? targetPost.isEmpathized
+        : reactionType === "cheer"
+          ? targetPost.isCheered
+          : targetPost.isSmiled;
 
     const supabase = createClient();
 
-    const { data, error } = await supabase
-      .from("posts")
-      .update({
-        [reactionColumn]: nextCount,
-      })
-      .eq("id", postId)
-      .select(
-        `
-          empathy_count,
-          cheer_count,
-          smile_count
-        `,
-      )
-      .single();
+    const { error } = isSelected
+      ? await supabase
+      .from("reactions")
+      .delete()
+      .eq("post_id", postId)
+      .eq("user_id", userId)
+      .eq("reaction_type", reactionType)
+      : await supabase.from("reactions").insert({
+          post_id : postId,
+          user_id : userId,
+          reaction_type : reactionType,
+      });
 
     if (error) {
       console.error("리액션 변경 실패:", error);
       return;
     }
 
+    const countChange = isSelected ? -1 : 1;
+
     setPosts((previousPosts) =>
-      previousPosts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              empathyCount: data.empathy_count,
-              cheerCount: data.cheer_count,
-              smileCount: data.smile_count,
+      previousPosts.map((post) =>{
+        if(post.id !== postId){
+          return post;
+        }
+        
+        if(reactionType === "empathy"){
+          return{
+            ...post,
+            empathyCount : Math.max(post.empathyCount + countChange, 0),
+            isEmpathized : !isSelected,
+          };
+        }
 
-              isEmpathized:
-                reactionType === "empathy"
-                  ? !post.isEmpathized
-                  : post.isEmpathized,
+        if(reactionType === "cheer"){
+          return{
+            ...post,
+            cheerCount : Math.max(post.cheerCount + countChange, 0),
+            isCheered : !isSelected,
+          };
+        }
 
-              isCheered:
-                reactionType === "cheer" ? !post.isCheered : post.isCheered,
-
-              isSmiled:
-                reactionType === "smile" ? !post.isSmiled : post.isSmiled,
-            }
-          : post,
-      ),
+          return{
+            ...post,
+            smileCount : Math.max(post.smileCount + countChange, 0),
+            isSmiled : !isSelected,
+          };
+        }),
     );
   };
 
@@ -394,46 +444,46 @@ export default function Home() {
           부담 없이 기록하고, 가볍게 공감받는 하루 기록 공간
         </p>
 
-      {isAuthLoading ?(
-        <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
-          <p className="text-sm text-gray-400">
-            로그인 상태를 확인하고 있습니다...
-          </p>
-        </div>   
-        ) : userId ?(
-        <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
-          <textarea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            maxLength={MAX_CONTENT_LENGTH}
-            className="h-32 w-full resize-none rounded-xl border p-4 outline-none focus:border-emerald-400"
-            placeholder="오늘은 어떤 하루였나요? ^^"
-          />
-        
-          <div className="mt-4 flex items-center justify-between">
-            <span className="text-sm text-gray-400">
-              {content.length} / {MAX_CONTENT_LENGTH}
-            </span>
-
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={content.trim() === "" || isSubmitting}
-              className={`rounded-full px-5 py-2 font-semibold text-white transition ${
-                content.trim() === "" || isSubmitting
-                  ? "cursor-not-allowed bg-gray-300"
-                  : "bg-emerald-400 hover:bg-emerald-500"
-              }`}
-            >
-              {isSubmitting ? "저장 중..." : "하루 남기기"}
-            </button>
+        {isAuthLoading ? (
+          <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
+            <p className="text-sm text-gray-400">
+              로그인 상태를 확인하고 있습니다...
+            </p>
           </div>
-        </div>  
-        ) :(
-           <div className="mt-10 rounded-2xl border bg-white p-8 shadow-sm">
-              <p className="text-gray-600">
-               하루를 남기려면 로그인이 필요합니다.
-              </p>
+        ) : userId ? (
+          <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
+            <textarea
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              maxLength={MAX_CONTENT_LENGTH}
+              className="h-32 w-full resize-none rounded-xl border p-4 outline-none focus:border-emerald-400"
+              placeholder="오늘은 어떤 하루였나요? ^^"
+            />
+
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-sm text-gray-400">
+                {content.length} / {MAX_CONTENT_LENGTH}
+              </span>
+
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={content.trim() === "" || isSubmitting}
+                className={`rounded-full px-5 py-2 font-semibold text-white transition ${
+                  content.trim() === "" || isSubmitting
+                    ? "cursor-not-allowed bg-gray-300"
+                    : "bg-emerald-400 hover:bg-emerald-500"
+                }`}
+              >
+                {isSubmitting ? "저장 중..." : "하루 남기기"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-10 rounded-2xl border bg-white p-8 shadow-sm">
+            <p className="text-gray-600">
+              하루를 남기려면 로그인이 필요합니다.
+            </p>
 
             <Link
               href="/login"
@@ -441,8 +491,8 @@ export default function Home() {
             >
               로그인하고 하루 남기기
             </Link>
-            </div>
-        ) }          
+          </div>
+        )}
         <div className="mt-12 text-left">
           <h3 className="mb-4 text-lg font-semibold">최근 올라온 하루</h3>
 
