@@ -11,6 +11,11 @@ type PostCardProps ={
   isSmiled : boolean;
   canManage : boolean;
   // true - 이 게시글을 수정,삭제할 수 있음 false - 수정,삭제할 수 없음
+
+  isEmpathyPending : boolean,
+  isCheerPending : boolean,
+  isSmilePending : boolean,
+ 
   onEmpathyClick : () => void;
   onCheerClick : () => void;
   onSmileClick : () => void;
@@ -28,6 +33,9 @@ export default function PostCard({
     isCheered,
     isSmiled,
     canManage,
+    isEmpathyPending,
+    isCheerPending,
+    isSmilePending,
     onEmpathyClick,
     onCheerClick,
     onSmileClick,
@@ -175,7 +183,9 @@ export default function PostCard({
             <button
                 type="button"
                 onClick={onEmpathyClick}
-                className={`rounded-full px-2 py-1 transition ${
+                disabled={isEmpathyPending}
+                aria-busy={isEmpathyPending}
+                className={`rounded-full px-2 py-1 transition disabled:cursor-wait disabled:opacity-50 ${
                     isEmpathized
                     ? "bg-emerald-100 text-emerald-700"
                     : "text-gray-500 hover:bg-gray-100"
@@ -190,7 +200,9 @@ export default function PostCard({
             <button
                 type="button"
                 onClick={onCheerClick}
-                className={`rounded-full px-2 py-1 transition ${
+                disabled={isCheerPending}
+                aria-busy={isCheerPending}
+                className={`rounded-full px-2 py-1 transition disabled:cursor-wait disabled:opacity-50 ${
                     isCheered
                         ? "bg-blue-100 text-blue-700"
                         : "text-gray-500 hover:bg-gray-100"
@@ -204,7 +216,9 @@ export default function PostCard({
              <button
                 type="button"
                 onClick={onSmileClick}
-                className={`rounded-full px-2 py-1 transition ${
+                disabled={isSmilePending}
+                aria-busy={isSmilePending}
+                className={`rounded-full px-2 py-1 transition disabled:cursor-wait disabled:opacity-50 ${
                     isSmiled
                         ? "bg-yellow-100 text-yellow-700"
                         : "text-gray-500 hover:bg-gray-100"

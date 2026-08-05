@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import PostCard from "../components/PostCard";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +30,11 @@ type DatabasePost = {
 
 type ReactionType = "empathy" | "cheer" | "smile";
 
+const createReactionKey = (
+  postId : number,
+  reactionType : ReactionType,
+) => `${postId}:${reactionType}`;
+
 type DatabaseReaction = {
   user_id: string;
   reaction_type: ReactionType;
@@ -46,6 +51,12 @@ export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const [pendingReactionsKeys, setPendingReactionKeys] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const pendingReactionsKeysRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -255,6 +266,16 @@ export default function Home() {
       return;
     }
 
+    const reactionKey = createReactionKey(postId, reactionType);
+
+    if(pendingReactionsKeysRef.current.has(reactionKey)){
+      return;
+    }
+
+    pendingReactionsKeysRef.current.add(reactionKey);
+    setPendingReactionKeys(new Set(pendingReactionsKeysRef.current));
+
+    try{
     const isSelected =
       reactionType === "empathy"
         ? targetPost.isEmpathized
@@ -313,6 +334,10 @@ export default function Home() {
           };
         }),
     );
+    } finally{
+     pendingReactionsKeysRef.current.delete(reactionKey);
+     setPendingReactionKeys(new Set(pendingReactionsKeysRef.current));
+    }
   };
 
   const handleDelete = async (postId: number) => {
@@ -500,6 +525,15 @@ export default function Home() {
                 isCheered={post.isCheered}
                 isSmiled={post.isSmiled}
                 canManage={userId !== null && post.userId === userId}
+                isEmpathyPending={pendingReactionsKeys.has(
+                  createReactionKey(post.id, "empathy"),
+                )}
+                isCheerPending={pendingReactionsKeys.has(
+                  createReactionKey(post.id, "cheer"),
+                )}
+                isSmilePending={pendingReactionsKeys.has(
+                  createReactionKey(post.id, "smile"),
+                )}
                 onEmpathyClick={() => handleReaction(post.id, "empathy")}
                 onCheerClick={() => handleReaction(post.id, "cheer")}
                 onSmileClick={() => handleReaction(post.id, "smile")}
