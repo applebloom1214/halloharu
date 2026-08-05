@@ -24,9 +24,6 @@ type DatabasePost = {
   id: number;
   user_id: string | null;
   content: string;
-  empathy_count: number;
-  cheer_count: number;
-  smile_count: number;
   created_at: string;
   reactions?: DatabaseReaction[];
 };
@@ -65,9 +62,6 @@ export default function Home() {
           id,
           user_id,
           content,
-          empathy_count,
-          cheer_count,
-          smile_count,
           created_at,
           reactions(
             user_id,
@@ -209,9 +203,6 @@ export default function Home() {
           id,
           user_id,
           content,
-          empathy_count,
-          cheer_count,
-          smile_count,
           created_at
         `,
         )
@@ -233,9 +224,9 @@ export default function Home() {
         id: databasePost.id,
         userId: databasePost.user_id,
         content: databasePost.content,
-        empathyCount: databasePost.empathy_count,
-        cheerCount: databasePost.cheer_count,
-        smileCount: databasePost.smile_count,
+        empathyCount: 0,
+        cheerCount: 0,
+        smileCount: 0,
         isEmpathized: false,
         isCheered: false,
         isSmiled: false,
