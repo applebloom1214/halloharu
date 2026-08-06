@@ -30,6 +30,8 @@ type DatabasePost = {
 
 type ReactionType = "empathy" | "cheer" | "smile";
 
+type PostFilter = "all" | "mine";
+
 const createReactionKey = (
   postId : number,
   reactionType : ReactionType,
@@ -45,6 +47,7 @@ const MAX_CONTENT_LENGTH = 300;
 export default function Home() {
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -401,6 +404,11 @@ export default function Home() {
     return true;
   };
 
+  const visiblePosts =
+    postFilter === "mine"
+      ? posts.filter((post) => post.userId === userId)
+      : posts;
+
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#333333]">
       <header className="flex items-center justify-between border-b bg-white px-6 py-4">
@@ -510,10 +518,40 @@ export default function Home() {
           </div>
         )}
         <div className="mt-12 text-left">
-          <h3 className="mb-4 text-lg font-semibold">최근 올라온 하루</h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="mb-4 text-lg font-semibold">최근 올라온 하루</h3>
+
+            {userId &&(
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPostFilter("all")}
+                  className={`rounded-full px-3 py-1 text-sm transition ${
+                    postFilter === "all"
+                      ? "bg-emerald-400 text-white"
+                      : "border bg-white text-gray-500 hover:bg-gray-50"
+                  }`}  
+                >
+                  전체 기록
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPostFilter("mine")}
+                  className={`rounded-full px-3 py-1 text-sm transition ${
+                    postFilter === "mine"
+                      ? "bg-emerald-400 text-white"
+                      : "border bg-white text-gray-500 hover:bg-gray-50"
+                  }`} 
+                >
+                  내 기록
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="space-y-3">
-            {posts.map((post) => (
+            {visiblePosts.map((post) => (
               <PostCard
                 key={post.id}
                 content={post.content}
