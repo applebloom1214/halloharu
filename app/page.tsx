@@ -376,7 +376,7 @@ export default function Home() {
 
     const supabase = createClient();
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("posts")
       .update({
         content: trimmedContent,
@@ -551,7 +551,16 @@ export default function Home() {
           </div>
 
           <div className="space-y-3">
-            {visiblePosts.map((post) => (
+            {visiblePosts.length === 0 ?(
+              <div className="rounded-2xl border bg-white px-6 py-10 text-center">
+                <p className="text-sm text-gray-500">
+                  {postFilter === "mine"
+                    ? "아직 작성한 하루가 없습니다."
+                    : "아직 올라온 하루가 없습니다."}
+                </p>
+              </div>  
+            ) : (
+            visiblePosts.map((post) => (
               <PostCard
                 key={post.id}
                 content={post.content}
@@ -580,8 +589,10 @@ export default function Home() {
                   handleUpdate(post.id, updatedContent)
                 }
               />
-            ))}
+            ))
+            )}
           </div>
+
         </div>
       </section>
     </main>
