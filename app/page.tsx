@@ -50,6 +50,7 @@ export default function Home() {
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [isPostsLoading, setIsPostsLoading] = useState(true);
   const [hasPostsError, setHasPostsError] = useState(false);
+  const [postsRetryCount, setPostsRetryCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -160,7 +161,7 @@ export default function Home() {
     };
 
     fetchPosts();
-  }, [isAuthLoading, userId]);
+  }, [isAuthLoading, userId, postsRetryCount]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -572,7 +573,17 @@ export default function Home() {
               <div className="rounded-2xl border border-red-100 bg-red-50 px-6 py-10 text-center">
                 <p className="text-sm text-red-500">
                   하루 기록을 불러오지 못했습니다.  
-                </p>  
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPostsRetryCount((previousCount) => previousCount +1)
+                  }   
+                  className="mt-4 rounded-full border border-red-200 bg-white px-4 py-2 text-sm text-red-500 transition hover:bg-red-100"
+                >
+                  다시 시도
+                </button>
               </div>  
             ) : visiblePosts.length === 0 ?(
               <div className="rounded-2xl border bg-white px-6 py-10 text-center">
