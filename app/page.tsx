@@ -49,6 +49,7 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [isPostsLoading, setIsPostsLoading] = useState(true);
+  const [hasPostsError, setHasPostsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -70,6 +71,7 @@ export default function Home() {
     const fetchPosts = async () => {
 
     setIsPostsLoading(true);
+    setHasPostsError(false);
 
     try{
       const supabase = createClient();
@@ -93,6 +95,7 @@ export default function Home() {
 
       if (error) {
         console.error("게시글 불러오기 실퍠:", error);
+        setHasPostsError(true);
         return;
       }
 
@@ -564,6 +567,12 @@ export default function Home() {
                 <p className="text-sm text-gray-400">
                   하루 기록을 불러오고 있습니다...
                 </p>
+              </div>  
+            ) : hasPostsError ? (
+              <div className="rounded-2xl border border-red-100 bg-red-50 px-6 py-10 text-center">
+                <p className="text-sm text-red-500">
+                  하루 기록을 불러오지 못했습니다.  
+                </p>  
               </div>  
             ) : visiblePosts.length === 0 ?(
               <div className="rounded-2xl border bg-white px-6 py-10 text-center">
