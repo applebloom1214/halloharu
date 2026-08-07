@@ -48,6 +48,7 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
+  const [isPostsLoading, setIsPostsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -67,6 +68,10 @@ export default function Home() {
     }
 
     const fetchPosts = async () => {
+
+    setIsPostsLoading(true);
+
+    try{
       const supabase = createClient();
 
       const { data, error } = await supabase
@@ -146,6 +151,9 @@ export default function Home() {
       });
 
       setPosts(convertedPosts);
+    } finally{
+      setIsPostsLoading(false);
+    }
     };
 
     fetchPosts();
@@ -551,7 +559,13 @@ export default function Home() {
           </div>
 
           <div className="space-y-3">
-            {visiblePosts.length === 0 ?(
+            {isPostsLoading ?(
+              <div className="rounded-2xl border bg-white px-6 py-10 text-center">
+                <p className="text-sm text-gray-400">
+                  하루 기록을 불러오고 있습니다...
+                </p>
+              </div>  
+            ) : visiblePosts.length === 0 ?(
               <div className="rounded-2xl border bg-white px-6 py-10 text-center">
                 <p className="text-sm text-gray-500">
                   {postFilter === "mine"
@@ -590,7 +604,7 @@ export default function Home() {
                 }
               />
             ))
-            )}
+           )}
           </div>
 
         </div>
