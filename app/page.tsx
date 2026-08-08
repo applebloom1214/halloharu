@@ -444,10 +444,18 @@ export default function Home() {
           className="h-11 w-auto"
         />
 
-        <div className="flex items-center gap-2">
-          {isAuthLoading ? (
-            <span className="text-sm text-gray-400">확인 중...</span>
-          ) : userEmail ? (
+        <div className="flex items-center gap-3">
+          <Link
+            href="/humor"
+            className="whitespace-nowrap text-sm text-gray-500 transition hover:text-emerald-500"
+          >
+            유머 공간
+          </Link>
+
+          <div className="flex items-center gap-2">
+            {isAuthLoading ?(
+              <span className="text-sm text-gray-400">확인 중...</span>
+            ) : userEmail ? (
             <>
               <span className="hidden max-w-48 truncate text-sm text-gray-500 sm:inline">
                 {userEmail}
@@ -482,7 +490,9 @@ export default function Home() {
               </Link>
             </>
           )}
+          </div>
         </div>
+
       </header>
 
       <section className="mx-auto max-w-2xl px-6 py-16 text-center">
