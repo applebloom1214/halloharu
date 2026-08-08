@@ -52,6 +52,7 @@ export default function Home() {
   const [hasPostsError, setHasPostsError] = useState(false);
   const [postsRetryCount, setPostsRetryCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingPostId, setDeletingPostId] = useState<number | null>(null);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -356,12 +357,19 @@ export default function Home() {
   };
 
   const handleDelete = async (postId: number) => {
+    if (deletingPostId !== null){
+      return;
+    }
+
     const shouldDelete = window.confirm("이 게시글을 정말 삭제하시겠습니까 ?");
 
     if (!shouldDelete) {
       return;
     }
 
+    setDeletingPostId(postId);
+
+    try{
     const supabase = createClient();
 
     const { error } = await supabase.from("posts").delete().eq("id", postId);
@@ -374,6 +382,10 @@ export default function Home() {
     setPosts((previousPosts) =>
       previousPosts.filter((post) => post.id !== postId),
     );
+       }
+       finally{
+        setDeletingPostId(null);
+       }
   };
 
   const handleUpdate = async (
@@ -606,6 +618,7 @@ export default function Home() {
                 isCheered={post.isCheered}
                 isSmiled={post.isSmiled}
                 canManage={userId !== null && post.userId === userId}
+                isDeleting={deletingPostId === post.id}
                 isEmpathyPending={pendingReactionsKeys.has(
                   createReactionKey(post.id, "empathy"),
                 )}

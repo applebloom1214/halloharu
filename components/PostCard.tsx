@@ -11,6 +11,7 @@ type PostCardProps ={
   isSmiled : boolean;
   canManage : boolean;
   // true - 이 게시글을 수정,삭제할 수 있음 false - 수정,삭제할 수 없음
+  isDeleting : boolean;
 
   isEmpathyPending : boolean,
   isCheerPending : boolean,
@@ -33,6 +34,7 @@ export default function PostCard({
     isCheered,
     isSmiled,
     canManage,
+    isDeleting,
     isEmpathyPending,
     isCheerPending,
     isSmilePending,
@@ -167,12 +169,14 @@ export default function PostCard({
                         >
                             수정    
                         </button>    
+
                         <button
                             type="button"
                             onClick={onDeleteClick}
-                            className="whitespace-nowrap text-sm text-gray-400 transition-colors hover:text-red-500"
+                            disabled={isDeleting}
+                            className="whitespace-nowrap text-sm text-gray-400 transition-colors hover:text-red-500 disabled:cursor-wait disabled:text-gray-300"
                          >
-                            삭제
+                            {isDeleting ? "삭제 중...": "삭제"}
                         </button>
                     </div>
                 ) }
