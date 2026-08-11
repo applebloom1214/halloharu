@@ -1,5 +1,6 @@
 "use client";
 
+import { Turnstile } from "@marsidev/react-turnstile";
 import Link from "next/link";
 import { type SubmitEvent, useState } from "react";
 
@@ -9,6 +10,7 @@ export default function SignupPage(){
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [passwordConfirmation, setPasswordConfirmation]= useState("");
+    const [captchaToken, setCaptchaToken] = useState("");
 
     const [message, setMessage] = useState("");
     const [isError, setIsError] = useState(false);
@@ -150,11 +152,24 @@ export default function SignupPage(){
                         />
                     </div>
 
+                    <div className="flex justify-center">
+                        <Turnstile
+                            siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                            onSuccess={(token) => setCaptchaToken(token)}
+                            onExpire={()=>setCaptchaToken("")}
+                            onError={()=>setCaptchaToken("")}
+                            options={{
+                                theme : "light",
+                                size : "flexible",
+                            }}
+                        />
+                    </div>
+
                     <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !captchaToken}
                         className={`w-full rounded-full py-3 font-semibold text-white transition ${
-                          isSubmitting
+                          isSubmitting || !captchaToken
                             ? "cursor-not-allowed bg-gray-300"
                             : "bg-emerald-400 hover:bg-emerald-500"
                         }`}
