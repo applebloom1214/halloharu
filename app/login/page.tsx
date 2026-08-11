@@ -1,8 +1,9 @@
 "use client";
 
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type SubmitEvent, useState } from "react";
+import { type SubmitEvent, useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,6 +12,8 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState("");
+  const turnstileRef = useRef<TurnstileInstance | null>(null);
 
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,6 +22,11 @@ export default function LoginPage() {
     event.preventDefault();
 
     if (isSubmitting) {
+      return;
+    }
+
+    if (!captchaToken) {
+      setMessage("사람 인증을 완료해 주세요.");
       return;
     }
 
@@ -31,6 +39,9 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
+        options: {
+          captchaToken,
+        },
       });
 
       if (error) {
@@ -44,6 +55,8 @@ export default function LoginPage() {
       router.refresh();
     } finally {
       setIsSubmitting(false);
+      setCaptchaToken("");
+      turnstileRef.current?.reset();
     }
   };
 
@@ -94,11 +107,25 @@ export default function LoginPage() {
             />
           </div>
 
+          <div className="flex justify-center">
+            <Turnstile
+              ref={turnstileRef}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onExpire={() => setCaptchaToken("")}
+              onError={() => setCaptchaToken("")}
+              options={{
+                theme: "light",
+                size: "flexible",
+              }}
+            />
+          </div>
+
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !captchaToken}
             className={`w-full rounded-full py-3 font-semibold text-white transition ${
-              isSubmitting
+              isSubmitting || !captchaToken
                 ? "cursor-not-allowed bg-gray-300"
                 : "bg-emerald-400 hover:bg-emerald-500"
             }`}
