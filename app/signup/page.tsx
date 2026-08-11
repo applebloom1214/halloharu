@@ -1,8 +1,8 @@
 "use client";
 
-import { Turnstile } from "@marsidev/react-turnstile";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import Link from "next/link";
-import { type SubmitEvent, useState } from "react";
+import { type SubmitEvent, useRef, useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,6 +11,7 @@ export default function SignupPage(){
     const [password, setPassword] = useState("");
     const [passwordConfirmation, setPasswordConfirmation]= useState("");
     const [captchaToken, setCaptchaToken] = useState("");
+    const turnstileRef = useRef<TurnstileInstance | null>(null);
 
     const [message, setMessage] = useState("");
     const [isError, setIsError] = useState(false);
@@ -31,6 +32,12 @@ export default function SignupPage(){
             return;
         }
 
+        if(!captchaToken){
+            setMessage("사람 인증을 완료해 주세요.");
+            setIsError(true);
+            return;
+        }
+
         setIsSubmitting(true);
         setMessage("");
         setIsError(false);
@@ -43,6 +50,7 @@ export default function SignupPage(){
                 password,
                 options : {
                     emailRedirectTo : `${window.location.origin}/auth/confirm`,
+                    captchaToken,
                 },
             });
 
@@ -69,6 +77,8 @@ export default function SignupPage(){
             setPasswordConfirmation("");
         }finally{
             setIsSubmitting(false);
+            setCaptchaToken("");
+            turnstileRef.current?.reset();
         }
     };
 
@@ -154,6 +164,7 @@ export default function SignupPage(){
 
                     <div className="flex justify-center">
                         <Turnstile
+                            ref={turnstileRef}
                             siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
                             onSuccess={(token) => setCaptchaToken(token)}
                             onExpire={()=>setCaptchaToken("")}
