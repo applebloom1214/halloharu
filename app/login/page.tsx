@@ -105,6 +105,14 @@ export default function LoginPage() {
               className="w-full rounded-xl border px-4 py-3 outline-none focus:border-emerald-400"
               placeholder="비밀번호 입력"
             />
+
+            <div className="mt-2 text-right">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-gray-400 hover:text-emerald-600">
+                  비밀번호를 잊으셨나요 ?
+              </Link>
+            </div>
           </div>
 
           <div className="flex justify-center">
