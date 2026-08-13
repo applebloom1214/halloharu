@@ -11,6 +11,11 @@ export async function GET(request : NextRequest){
         "type",
     ) as EmailOtpType | null;
 
+    const next = request.nextUrl.searchParams.get("next");
+
+    const redirectPath =
+        next === "/update-password" ? "/update-password" : "/";
+
     if(tokenHash && type){
         const supabase = await createClient();
 
@@ -20,7 +25,7 @@ export async function GET(request : NextRequest){
         });
 
         if(!error){
-            return NextResponse.redirect(new URL("/", request.url));
+            return NextResponse.redirect(new URL(redirectPath, request.url));
         }
     }
 
@@ -30,7 +35,7 @@ export async function GET(request : NextRequest){
         const {error} = await supabase.auth.exchangeCodeForSession(code);
 
         if (!error){
-            return NextResponse.redirect(new URL("/", request.url));
+            return NextResponse.redirect(new URL(redirectPath, request.url));
         }
     }    
 
