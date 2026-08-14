@@ -43,6 +43,7 @@ type DatabaseReaction = {
 };
 
 const MAX_CONTENT_LENGTH = 300;
+const POSTS_PER_PAGE = 10;
 
 export default function Home() {
   const [content, setContent] = useState("");
@@ -99,7 +100,8 @@ export default function Home() {
 
       const { data, error } = await postsQuery
         .order("created_at", { ascending: false })
-        .order("id", { ascending: false });
+        .order("id", { ascending: false })
+        .range(0, POSTS_PER_PAGE -1);
 
         
       if (error) {
