@@ -49,6 +49,7 @@ export default function Home() {
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
+  const [hasMorePosts, setHasMorePosts] = useState(false);
   const [isPostsLoading, setIsPostsLoading] = useState(true);
   const [hasPostsError, setHasPostsError] = useState(false);
   const [postsRetryCount, setPostsRetryCount] = useState(0);
@@ -75,6 +76,7 @@ export default function Home() {
 
     setIsPostsLoading(true);
     setHasPostsError(false);
+    setHasMorePosts(false);
 
     try{
       const supabase = createClient();
@@ -101,7 +103,7 @@ export default function Home() {
       const { data, error } = await postsQuery
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(0, POSTS_PER_PAGE -1);
+        .range(0, POSTS_PER_PAGE);
 
         
       if (error) {
@@ -112,7 +114,13 @@ export default function Home() {
 
       const databasePosts = (data ?? []) as DatabasePost[];
 
-      const convertedPosts: Post[] = databasePosts.map((post) => {
+      const hasMore = databasePosts.length > POSTS_PER_PAGE;
+
+      const displayedDatabasePosts = databasePosts.slice(0, POSTS_PER_PAGE);
+
+      setHasMorePosts(hasMore);
+
+      const convertedPosts: Post[] = displayedDatabasePosts.map((post) => {
         const reactions = post.reactions ?? [];
 
         const empathyCount = reactions.filter(
@@ -652,6 +660,16 @@ export default function Home() {
               />
             ))
            )}
+           {!isPostsLoading &&
+            !hasPostsError &&
+            posts.length > 0 && (
+              <p className="pt-2 text-center text-xs text-gray-400">
+                {hasMorePosts
+                  ? "더 불러올 기록이 있습니다."
+                  : "모든 기록을 불러왔습니다."
+                }
+              </p>
+            )}
           </div>
 
         </div>
