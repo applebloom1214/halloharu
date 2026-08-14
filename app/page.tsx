@@ -78,23 +78,30 @@ export default function Home() {
     try{
       const supabase = createClient();
 
-      const { data, error } = await supabase
+      let postsQuery = supabase
         .from("posts")
         .select(
           `
-          id,
-          user_id,
-          content,
-          created_at,
-          reactions(
+            id,
             user_id,
-            reaction_type
-          )
-          `,
-        )
+            content,
+            created_at,
+            reactions(
+              user_id,
+              reaction_type
+            )
+          `
+        );
+
+      if(postFilter === "mine" && userId){
+        postsQuery = postsQuery.eq("user_id", userId);
+      }  
+
+      const { data, error } = await postsQuery
         .order("created_at", { ascending: false })
         .order("id", { ascending: false });
 
+        
       if (error) {
         console.error("게시글 불러오기 실퍠:", error);
         setHasPostsError(true);
@@ -162,7 +169,7 @@ export default function Home() {
     };
 
     fetchPosts();
-  }, [isAuthLoading, userId, postsRetryCount]);
+  }, [isAuthLoading, userId, postFilter, postsRetryCount]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -428,11 +435,6 @@ export default function Home() {
     return true;
   };
 
-  const visiblePosts =
-    postFilter === "mine"
-      ? posts.filter((post) => post.userId === userId)
-      : posts;
-
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#333333]">
       <header className="flex items-center justify-between border-b bg-white px-6 py-4">
@@ -607,7 +609,7 @@ export default function Home() {
                   다시 시도
                 </button>
               </div>  
-            ) : visiblePosts.length === 0 ?(
+            ) : posts.length === 0 ?(
               <div className="rounded-2xl border bg-white px-6 py-10 text-center">
                 <p className="text-sm text-gray-500">
                   {postFilter === "mine"
@@ -616,7 +618,7 @@ export default function Home() {
                 </p>
               </div>  
             ) : (
-            visiblePosts.map((post) => (
+            posts.map((post) => (
               <PostCard
                 key={post.id}
                 content={post.content}
