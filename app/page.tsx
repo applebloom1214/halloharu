@@ -50,6 +50,7 @@ export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [hasMorePosts, setHasMorePosts] = useState(false);
+  const [postsLimit, setPostsLimit] = useState(POSTS_PER_PAGE);
   const [isPostsLoading, setIsPostsLoading] = useState(true);
   const [hasPostsError, setHasPostsError] = useState(false);
   const [postsRetryCount, setPostsRetryCount] = useState(0);
@@ -103,7 +104,7 @@ export default function Home() {
       const { data, error } = await postsQuery
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(0, POSTS_PER_PAGE);
+        .range(0, postsLimit);
 
         
       if (error) {
@@ -114,9 +115,9 @@ export default function Home() {
 
       const databasePosts = (data ?? []) as DatabasePost[];
 
-      const hasMore = databasePosts.length > POSTS_PER_PAGE;
+      const hasMore = databasePosts.length > postsLimit;
 
-      const displayedDatabasePosts = databasePosts.slice(0, POSTS_PER_PAGE);
+      const displayedDatabasePosts = databasePosts.slice(0, postsLimit);
 
       setHasMorePosts(hasMore);
 
@@ -179,7 +180,7 @@ export default function Home() {
     };
 
     fetchPosts();
-  }, [isAuthLoading, userId, postFilter, postsRetryCount]);
+  }, [isAuthLoading, userId, postFilter, postsLimit, postsRetryCount]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -571,7 +572,10 @@ export default function Home() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setPostFilter("all")}
+                  onClick={() => {
+                    setPostFilter("all");
+                    setPostsLimit(POSTS_PER_PAGE);
+                  }}
                   className={`rounded-full px-3 py-1 text-sm transition ${
                     postFilter === "all"
                       ? "bg-emerald-400 text-white"
@@ -583,7 +587,10 @@ export default function Home() {
 
                 <button
                   type="button"
-                  onClick={() => setPostFilter("mine")}
+                  onClick={() => {
+                    setPostFilter("mine");
+                    setPostsLimit(POSTS_PER_PAGE);
+                  }}
                   className={`rounded-full px-3 py-1 text-sm transition ${
                     postFilter === "mine"
                       ? "bg-emerald-400 text-white"
@@ -663,12 +670,25 @@ export default function Home() {
            {!isPostsLoading &&
             !hasPostsError &&
             posts.length > 0 && (
-              <p className="pt-2 text-center text-xs text-gray-400">
-                {hasMorePosts
-                  ? "더 불러올 기록이 있습니다."
-                  : "모든 기록을 불러왔습니다."
-                }
-              </p>
+              <div className="pt-3 text-center">
+                {hasMorePosts ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPostsLimit(
+                        (previousLimit) => previousLimit + POSTS_PER_PAGE,
+                      )
+                    }
+                    className="rounded-full border bg-white px-5 py-2 text-sm text-gray-600 transition hover:border-emerald-300 hover:text-emerald-500"
+                  >
+                    더 보기
+                  </button>
+                ) : (
+                  <p className="text-xs text-gray-400">
+                    모든 기록을 불러왔습니다.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
