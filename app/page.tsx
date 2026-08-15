@@ -52,6 +52,7 @@ export default function Home() {
   const [hasMorePosts, setHasMorePosts] = useState(false);
   const [postsLimit, setPostsLimit] = useState(POSTS_PER_PAGE);
   const [isPostsLoading, setIsPostsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasPostsError, setHasPostsError] = useState(false);
   const [postsRetryCount, setPostsRetryCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,9 +76,16 @@ export default function Home() {
 
     const fetchPosts = async () => {
 
-    setIsPostsLoading(true);
+    const isLoadingAdditionalPosts =postsLimit > POSTS_PER_PAGE;
+
+    if(isLoadingAdditionalPosts){
+      setIsLoadingMore(true);
+    } else{
+      setIsPostsLoading(true);
+      setHasMorePosts(false);
+    }
+
     setHasPostsError(false);
-    setHasMorePosts(false);
 
     try{
       const supabase = createClient();
@@ -176,6 +184,7 @@ export default function Home() {
       setPosts(convertedPosts);
     } finally{
       setIsPostsLoading(false);
+      setIsLoadingMore(false);
     }
     };
 
@@ -674,14 +683,20 @@ export default function Home() {
                 {hasMorePosts ? (
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      setIsLoadingMore(true);
                       setPostsLimit(
                         (previousLimit) => previousLimit + POSTS_PER_PAGE,
-                      )
-                    }
-                    className="rounded-full border bg-white px-5 py-2 text-sm text-gray-600 transition hover:border-emerald-300 hover:text-emerald-500"
+                      );
+                    }}
+                    disabled = {isLoadingMore}
+                    className={`rounded-full border bg-white px-5 py-2 text-sm transition ${
+                      isLoadingMore
+                        ? "cursor-not-allowed text-gray-300"
+                        : "text-gray-600 hover:border-emerald-300 hover:text-emerald-500"
+                    }`}
                   >
-                    더 보기
+                    {isLoadingMore ? "불러오는 중..." : "더 보기"}
                   </button>
                 ) : (
                   <p className="text-xs text-gray-400">
