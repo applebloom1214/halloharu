@@ -32,10 +32,8 @@ type ReactionType = "empathy" | "cheer" | "smile";
 
 type PostFilter = "all" | "mine";
 
-const createReactionKey = (
-  postId : number,
-  reactionType : ReactionType,
-) => `${postId}:${reactionType}`;
+const createReactionKey = (postId: number, reactionType: ReactionType) =>
+  `${postId}:${reactionType}`;
 
 type DatabaseReaction = {
   user_id: string;
@@ -54,6 +52,7 @@ export default function Home() {
   const [isPostsLoading, setIsPostsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasPostsError, setHasPostsError] = useState(false);
+  const [hasLoadMoreError, setHasLoadMoreError] = useState(false);
   const [postsRetryCount, setPostsRetryCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingPostId, setDeletingPostId] = useState<number | null>(null);
@@ -75,24 +74,22 @@ export default function Home() {
     }
 
     const fetchPosts = async () => {
+      const isLoadingAdditionalPosts = postsLimit > POSTS_PER_PAGE;
 
-    const isLoadingAdditionalPosts =postsLimit > POSTS_PER_PAGE;
+      if (isLoadingAdditionalPosts) {
+        setIsLoadingMore(true);
+      } else {
+        setIsPostsLoading(true);
+        setHasMorePosts(false);
+      }
 
-    if(isLoadingAdditionalPosts){
-      setIsLoadingMore(true);
-    } else{
-      setIsPostsLoading(true);
-      setHasMorePosts(false);
-    }
+      setHasPostsError(false);
+      setHasLoadMoreError(false);
 
-    setHasPostsError(false);
+      try {
+        const supabase = createClient();
 
-    try{
-      const supabase = createClient();
-
-      let postsQuery = supabase
-        .from("posts")
-        .select(
+        let postsQuery = supabase.from("posts").select(
           `
             id,
             user_id,
@@ -102,90 +99,95 @@ export default function Home() {
               user_id,
               reaction_type
             )
-          `
+          `,
         );
 
-      if(postFilter === "mine" && userId){
-        postsQuery = postsQuery.eq("user_id", userId);
-      }  
+        if (postFilter === "mine" && userId) {
+          postsQuery = postsQuery.eq("user_id", userId);
+        }
 
-      const { data, error } = await postsQuery
-        .order("created_at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(0, postsLimit);
+        const { data, error } = await postsQuery
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(0, postsLimit);
 
-        
-      if (error) {
-        console.error("게시글 불러오기 실퍠:", error);
-        setHasPostsError(true);
-        return;
+        if (error) {
+          console.error("게시글 불러오기 실퍠:", error);
+
+          if (isLoadingAdditionalPosts) {
+            setHasLoadMoreError(true);
+          } else {
+            setHasPostsError(true);
+          }
+          return;
+        }
+
+        const databasePosts = (data ?? []) as DatabasePost[];
+
+        const hasMore = databasePosts.length > postsLimit;
+
+        const displayedDatabasePosts = databasePosts.slice(0, postsLimit);
+
+        setHasMorePosts(hasMore);
+
+        const convertedPosts: Post[] = displayedDatabasePosts.map((post) => {
+          const reactions = post.reactions ?? [];
+
+          const empathyCount = reactions.filter(
+            (reaction) => reaction.reaction_type === "empathy",
+          ).length;
+
+          const cheerCount = reactions.filter(
+            (reaction) => reaction.reaction_type === "cheer",
+          ).length;
+
+          const smileCount = reactions.filter(
+            (reaction) => reaction.reaction_type === "smile",
+          ).length;
+
+          const isEmpathized =
+            userId !== null &&
+            reactions.some(
+              (reaction) =>
+                reaction.user_id === userId &&
+                reaction.reaction_type === "empathy",
+            );
+
+          const isCheered =
+            userId !== null &&
+            reactions.some(
+              (reaction) =>
+                reaction.user_id === userId &&
+                reaction.reaction_type === "cheer",
+            );
+
+          const isSmiled =
+            userId !== null &&
+            reactions.some(
+              (reaction) =>
+                reaction.user_id === userId &&
+                reaction.reaction_type === "smile",
+            );
+
+          return {
+            id: post.id,
+            userId: post.user_id,
+            content: post.content,
+            empathyCount,
+            cheerCount,
+            smileCount,
+            isEmpathized,
+            isCheered,
+            isSmiled,
+            createdAt: post.created_at,
+          };
+        });
+
+        setPosts(convertedPosts);
+      } finally {
+        setIsPostsLoading(false);
+        setIsLoadingMore(false);
       }
-
-      const databasePosts = (data ?? []) as DatabasePost[];
-
-      const hasMore = databasePosts.length > postsLimit;
-
-      const displayedDatabasePosts = databasePosts.slice(0, postsLimit);
-
-      setHasMorePosts(hasMore);
-
-      const convertedPosts: Post[] = displayedDatabasePosts.map((post) => {
-        const reactions = post.reactions ?? [];
-
-        const empathyCount = reactions.filter(
-          (reaction) => reaction.reaction_type === "empathy",
-        ).length;
-
-        const cheerCount = reactions.filter(
-          (reaction) => reaction.reaction_type === "cheer",
-        ).length;
-
-        const smileCount = reactions.filter(
-          (reaction) => reaction.reaction_type === "smile",
-        ).length;
-
-        const isEmpathized =
-          userId !== null &&
-          reactions.some(
-            (reaction) =>
-              reaction.user_id === userId &&
-              reaction.reaction_type === "empathy",
-          );
-
-        const isCheered =
-          userId !== null &&
-          reactions.some(
-            (reaction) =>
-              reaction.user_id === userId && 
-              reaction.reaction_type === "cheer",
-          );
-
-        const isSmiled =
-          userId !== null &&
-          reactions.some(
-            (reaction) =>
-              reaction.user_id === userId && reaction.reaction_type === "smile",
-          );
-
-        return {
-          id: post.id,
-          userId: post.user_id,
-          content: post.content,
-          empathyCount,
-          cheerCount,
-          smileCount,
-          isEmpathized,
-          isCheered,
-          isSmiled,
-          createdAt: post.created_at,
-        };
-      });
-
-      setPosts(convertedPosts);
-    } finally{
-      setIsPostsLoading(false);
-      setIsLoadingMore(false);
-    }
     };
 
     fetchPosts();
@@ -294,11 +296,8 @@ export default function Home() {
     }
   };
 
-  const handleReaction = async (
-    postId: number,
-    reactionType: ReactionType,
-  ) => {
-    if(!userId){
+  const handleReaction = async (postId: number, reactionType: ReactionType) => {
+    if (!userId) {
       window.alert("리액션을 남기려면 로그인이 필요합니다.");
       return;
     }
@@ -311,80 +310,80 @@ export default function Home() {
 
     const reactionKey = createReactionKey(postId, reactionType);
 
-    if(pendingReactionsKeysRef.current.has(reactionKey)){
+    if (pendingReactionsKeysRef.current.has(reactionKey)) {
       return;
     }
 
     pendingReactionsKeysRef.current.add(reactionKey);
     setPendingReactionKeys(new Set(pendingReactionsKeysRef.current));
 
-    try{
-    const isSelected =
-      reactionType === "empathy"
-        ? targetPost.isEmpathized
-        : reactionType === "cheer"
-          ? targetPost.isCheered
-          : targetPost.isSmiled;
+    try {
+      const isSelected =
+        reactionType === "empathy"
+          ? targetPost.isEmpathized
+          : reactionType === "cheer"
+            ? targetPost.isCheered
+            : targetPost.isSmiled;
 
-    const supabase = createClient();
+      const supabase = createClient();
 
-    const { error } = isSelected
-      ? await supabase
-      .from("reactions")
-      .delete()
-      .eq("post_id", postId)
-      .eq("user_id", userId)
-      .eq("reaction_type", reactionType)
-      : await supabase.from("reactions").insert({
-          post_id : postId,
-          user_id : userId,
-          reaction_type : reactionType,
-      });
+      const { error } = isSelected
+        ? await supabase
+            .from("reactions")
+            .delete()
+            .eq("post_id", postId)
+            .eq("user_id", userId)
+            .eq("reaction_type", reactionType)
+        : await supabase.from("reactions").insert({
+            post_id: postId,
+            user_id: userId,
+            reaction_type: reactionType,
+          });
 
-    if (error) {
-      console.error("리액션 변경 실패:", error);
-      return;
-    }
+      if (error) {
+        console.error("리액션 변경 실패:", error);
+        return;
+      }
 
-    const countChange = isSelected ? -1 : 1;
+      const countChange = isSelected ? -1 : 1;
 
-    setPosts((previousPosts) =>
-      previousPosts.map((post) =>{
-        if(post.id !== postId){
-          return post;
-        }
-        
-        if(reactionType === "empathy"){
-          return{
+      setPosts((previousPosts) =>
+        previousPosts.map((post) => {
+          if (post.id !== postId) {
+            return post;
+          }
+
+          if (reactionType === "empathy") {
+            return {
+              ...post,
+              empathyCount: Math.max(post.empathyCount + countChange, 0),
+              isEmpathized: !isSelected,
+            };
+          }
+
+          if (reactionType === "cheer") {
+            return {
+              ...post,
+              cheerCount: Math.max(post.cheerCount + countChange, 0),
+              isCheered: !isSelected,
+            };
+          }
+
+          return {
             ...post,
-            empathyCount : Math.max(post.empathyCount + countChange, 0),
-            isEmpathized : !isSelected,
-          };
-        }
-
-        if(reactionType === "cheer"){
-          return{
-            ...post,
-            cheerCount : Math.max(post.cheerCount + countChange, 0),
-            isCheered : !isSelected,
-          };
-        }
-
-          return{
-            ...post,
-            smileCount : Math.max(post.smileCount + countChange, 0),
-            isSmiled : !isSelected,
+            smileCount: Math.max(post.smileCount + countChange, 0),
+            isSmiled: !isSelected,
           };
         }),
-    );
-    } finally{
-     pendingReactionsKeysRef.current.delete(reactionKey);
-     setPendingReactionKeys(new Set(pendingReactionsKeysRef.current));
+      );
+    } finally {
+      pendingReactionsKeysRef.current.delete(reactionKey);
+      setPendingReactionKeys(new Set(pendingReactionsKeysRef.current));
     }
   };
 
   const handleDelete = async (postId: number) => {
-    if (deletingPostId !== null){
+    if (deletingPostId !== null) {
       return;
     }
 
@@ -396,23 +395,22 @@ export default function Home() {
 
     setDeletingPostId(postId);
 
-    try{
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    const { error } = await supabase.from("posts").delete().eq("id", postId);
+      const { error } = await supabase.from("posts").delete().eq("id", postId);
 
-    if (error) {
-      console.error("게시글 삭제 실퍠:", error);
-      return;
+      if (error) {
+        console.error("게시글 삭제 실퍠:", error);
+        return;
+      }
+
+      setPosts((previousPosts) =>
+        previousPosts.filter((post) => post.id !== postId),
+      );
+    } finally {
+      setDeletingPostId(null);
     }
-
-    setPosts((previousPosts) =>
-      previousPosts.filter((post) => post.id !== postId),
-    );
-       }
-       finally{
-        setDeletingPostId(null);
-       }
   };
 
   const handleUpdate = async (
@@ -475,46 +473,45 @@ export default function Home() {
           </Link>
 
           <div className="flex items-center gap-2">
-            {isAuthLoading ?(
+            {isAuthLoading ? (
               <span className="text-sm text-gray-400">확인 중...</span>
             ) : userEmail ? (
-            <>
-              <span className="hidden max-w-48 truncate text-sm text-gray-500 sm:inline">
-                {userEmail}
-              </span>
+              <>
+                <span className="hidden max-w-48 truncate text-sm text-gray-500 sm:inline">
+                  {userEmail}
+                </span>
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={isSigningOut}
-                className={`rounded-full border px-4 py-2 text-sm transition ${
-                  isSigningOut
-                    ? "cursor-not-allowed text-gray-300"
-                    : "text-gray-600 hover:border-red-300 hover:text-red-500"
-                }`}
-              >
-                {isSigningOut ? "로그아웃 중..." : "로그아웃"}
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="rounded-full border px-4 py-2 text-sm"
-              >
-                로그인
-              </Link>
-              <Link
-                href="/signup"
-                className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-white"
-              >
-                회원가입
-              </Link>
-            </>
-          )}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={isSigningOut}
+                  className={`rounded-full border px-4 py-2 text-sm transition ${
+                    isSigningOut
+                      ? "cursor-not-allowed text-gray-300"
+                      : "text-gray-600 hover:border-red-300 hover:text-red-500"
+                  }`}
+                >
+                  {isSigningOut ? "로그아웃 중..." : "로그아웃"}
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-full border px-4 py-2 text-sm"
+                >
+                  로그인
+                </Link>
+                <Link
+                  href="/signup"
+                  className="rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  회원가입
+                </Link>
+              </>
+            )}
           </div>
         </div>
-
       </header>
 
       <section className="mx-auto max-w-2xl px-6 py-16 text-center">
@@ -577,7 +574,7 @@ export default function Home() {
           <div className="mb-4 flex items-center justify-between">
             <h3 className="mb-4 text-lg font-semibold">최근 올라온 하루</h3>
 
-            {userId &&(
+            {userId && (
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -589,7 +586,7 @@ export default function Home() {
                     postFilter === "all"
                       ? "bg-emerald-400 text-white"
                       : "border bg-white text-gray-500 hover:bg-gray-50"
-                  }`}  
+                  }`}
                 >
                   전체 기록
                 </button>
@@ -604,7 +601,7 @@ export default function Home() {
                     postFilter === "mine"
                       ? "bg-emerald-400 text-white"
                       : "border bg-white text-gray-500 hover:bg-gray-50"
-                  }`} 
+                  }`}
                 >
                   내 기록
                 </button>
@@ -613,74 +610,98 @@ export default function Home() {
           </div>
 
           <div className="space-y-3">
-            {isPostsLoading ?(
+            {isPostsLoading ? (
               <div className="rounded-2xl border bg-white px-6 py-10 text-center">
                 <p className="text-sm text-gray-400">
                   하루 기록을 불러오고 있습니다...
                 </p>
-              </div>  
+              </div>
             ) : hasPostsError ? (
               <div className="rounded-2xl border border-red-100 bg-red-50 px-6 py-10 text-center">
                 <p className="text-sm text-red-500">
-                  하루 기록을 불러오지 못했습니다.  
+                  하루 기록을 불러오지 못했습니다.
                 </p>
 
                 <button
                   type="button"
                   onClick={() =>
-                    setPostsRetryCount((previousCount) => previousCount +1)
-                  }   
+                    setPostsRetryCount((previousCount) => previousCount + 1)
+                  }
                   className="mt-4 rounded-full border border-red-200 bg-white px-4 py-2 text-sm text-red-500 transition hover:bg-red-100"
                 >
                   다시 시도
                 </button>
-              </div>  
-            ) : posts.length === 0 ?(
+              </div>
+            ) : posts.length === 0 ? (
               <div className="rounded-2xl border bg-white px-6 py-10 text-center">
                 <p className="text-sm text-gray-500">
                   {postFilter === "mine"
                     ? "아직 작성한 하루가 없습니다."
                     : "아직 올라온 하루가 없습니다."}
                 </p>
-              </div>  
+              </div>
             ) : (
-            posts.map((post) => (
-              <PostCard
-                key={post.id}
-                content={post.content}
-                createdAt={post.createdAt}
-                empathyCount={post.empathyCount}
-                cheerCount={post.cheerCount}
-                smileCount={post.smileCount}
-                isEmpathized={post.isEmpathized}
-                isCheered={post.isCheered}
-                isSmiled={post.isSmiled}
-                canManage={userId !== null && post.userId === userId}
-                isDeleting={deletingPostId === post.id}
-                isEmpathyPending={pendingReactionsKeys.has(
-                  createReactionKey(post.id, "empathy"),
-                )}
-                isCheerPending={pendingReactionsKeys.has(
-                  createReactionKey(post.id, "cheer"),
-                )}
-                isSmilePending={pendingReactionsKeys.has(
-                  createReactionKey(post.id, "smile"),
-                )}
-                onEmpathyClick={() => handleReaction(post.id, "empathy")}
-                onCheerClick={() => handleReaction(post.id, "cheer")}
-                onSmileClick={() => handleReaction(post.id, "smile")}
-                onDeleteClick={() => handleDelete(post.id)}
-                onUpdate={(updatedContent) =>
-                  handleUpdate(post.id, updatedContent)
-                }
-              />
-            ))
-           )}
-           {!isPostsLoading &&
-            !hasPostsError &&
-            posts.length > 0 && (
+              posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  content={post.content}
+                  createdAt={post.createdAt}
+                  empathyCount={post.empathyCount}
+                  cheerCount={post.cheerCount}
+                  smileCount={post.smileCount}
+                  isEmpathized={post.isEmpathized}
+                  isCheered={post.isCheered}
+                  isSmiled={post.isSmiled}
+                  canManage={userId !== null && post.userId === userId}
+                  isDeleting={deletingPostId === post.id}
+                  isEmpathyPending={pendingReactionsKeys.has(
+                    createReactionKey(post.id, "empathy"),
+                  )}
+                  isCheerPending={pendingReactionsKeys.has(
+                    createReactionKey(post.id, "cheer"),
+                  )}
+                  isSmilePending={pendingReactionsKeys.has(
+                    createReactionKey(post.id, "smile"),
+                  )}
+                  onEmpathyClick={() => handleReaction(post.id, "empathy")}
+                  onCheerClick={() => handleReaction(post.id, "cheer")}
+                  onSmileClick={() => handleReaction(post.id, "smile")}
+                  onDeleteClick={() => handleDelete(post.id)}
+                  onUpdate={(updatedContent) =>
+                    handleUpdate(post.id, updatedContent)
+                  }
+                />
+              ))
+            )}
+            {!isPostsLoading && 
+             !hasPostsError && 
+             posts.length > 0 && (
               <div className="pt-3 text-center">
-                {hasMorePosts ? (
+                {hasLoadMoreError ? (
+                  <div>
+                    <p className="text-sm text-red-500">
+                      추가 기록을 불러오지 못했습니다.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLoadingMore(true);
+                        setPostsRetryCount(
+                          (previousCount) => previousCount + 1,
+                        );
+                      }}
+                      disabled={isLoadingMore}
+                      className={`mt-3 rounded-full border px-4 py-2 text-sm transition ${
+                        isLoadingMore
+                          ? "cursor-not-allowed text-gray-300"
+                          : "border-red-200 bg-white text-red-500 hover:bg-red-50"
+                      }`}
+                    >
+                      {isLoadingMore ? "다시 불러오는 중..." : "다시 시도"}
+                    </button>
+                  </div>
+                ) : hasMorePosts ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -689,7 +710,7 @@ export default function Home() {
                         (previousLimit) => previousLimit + POSTS_PER_PAGE,
                       );
                     }}
-                    disabled = {isLoadingMore}
+                    disabled={isLoadingMore}
                     className={`rounded-full border bg-white px-5 py-2 text-sm transition ${
                       isLoadingMore
                         ? "cursor-not-allowed text-gray-300"
@@ -706,7 +727,6 @@ export default function Home() {
               </div>
             )}
           </div>
-
         </div>
       </section>
     </main>
