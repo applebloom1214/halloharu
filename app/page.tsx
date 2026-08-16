@@ -55,6 +55,7 @@ export default function Home() {
   const [hasLoadMoreError, setHasLoadMoreError] = useState(false);
   const [postsRetryCount, setPostsRetryCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
   const [deletingPostId, setDeletingPostId] = useState<number | null>(null);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -243,6 +244,7 @@ export default function Home() {
       return;
     }
 
+    setSubmitErrorMessage(null);
     setIsSubmitting(true);
 
     try {
@@ -266,6 +268,17 @@ export default function Home() {
 
       if (error) {
         console.error("게시글 저장 실퍠:", error);
+
+        if(error.code === "23505"){
+          setSubmitErrorMessage(
+            "오늘의 기록은 이미 남겼습니다.",
+          );
+        }else{
+          setSubmitErrorMessage(
+            "하루 기록을 저장하지 못했습니다. 다시 시도해 주세요.",
+          );
+        }
+
         return;
       }
 
@@ -536,6 +549,15 @@ export default function Home() {
               className="h-32 w-full resize-none rounded-xl border p-4 outline-none focus:border-emerald-400"
               placeholder="오늘은 어떤 하루였나요? ^^"
             />
+
+            {submitErrorMessage &&(
+              <p
+                role="alert"
+                className="mt-2 text-left text-sm text-red-500"
+              >
+                {submitErrorMessage}
+              </p>  
+            )}
 
             <div className="mt-4 flex items-center justify-between">
               <span className="text-sm text-gray-400">
