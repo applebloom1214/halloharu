@@ -473,6 +473,30 @@ export default function Home() {
       setPosts((previousPosts) =>
         previousPosts.filter((post) => post.id !== postId),
       );
+
+      if (userId) {
+        const todayInKorea = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Seoul",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date());
+
+        const { data: todayPost, error: todayPostError } = await supabase
+          .from("posts")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("daily_post_date", todayInKorea)
+          .limit(1)
+          .maybeSingle();
+
+        if(todayPostError){
+          console.error("삭제 후 오늘 기록 확인 실패 :", todayPostError,);
+        }else{
+          setHasPostedToday(todayPost !== null);
+          setSubmitErrorMessage(null);
+        }
+      }
     } finally {
       setDeletingPostId(null);
     }
