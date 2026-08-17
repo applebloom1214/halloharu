@@ -43,6 +43,14 @@ type DatabaseReaction = {
 const MAX_CONTENT_LENGTH = 300;
 const POSTS_PER_PAGE = 10;
 
+const getTodayInKorea = () => 
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone : "Asia/Seoul",
+    year : "numeric",
+    month : "2-digit",
+    day : "2-digit",
+  }).format(new Date());
+
 export default function Home() {
   const [content, setContent] = useState("");
   const [posts, setPosts] = useState<Post[]>([]);
@@ -228,12 +236,7 @@ export default function Home() {
       try {
         const supabase = createClient();
 
-        const todayInKorea = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "Asia/Seoul",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }).format(new Date());
+        const todayInKorea = getTodayInKorea();
 
         const { data, error } = await supabase
           .from("posts")
@@ -475,12 +478,7 @@ export default function Home() {
       );
 
       if (userId) {
-        const todayInKorea = new Intl.DateTimeFormat("en-CA", {
-          timeZone: "Asia/Seoul",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }).format(new Date());
+        const todayInKorea = getTodayInKorea();
 
         const { data: todayPost, error: todayPostError } = await supabase
           .from("posts")
