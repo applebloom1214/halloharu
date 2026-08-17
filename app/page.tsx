@@ -55,8 +55,13 @@ export default function Home() {
   const [hasLoadMoreError, setHasLoadMoreError] = useState(false);
   const [postsRetryCount, setPostsRetryCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(null);
+  const [submitErrorMessage, setSubmitErrorMessage] = useState<string | null>(
+    null,
+  );
   const [deletingPostId, setDeletingPostId] = useState<number | null>(null);
+  const [hasPostedToday, setHasPostedToday] = useState(false);
+  const [isDailyPostStatusLoading, setIsDailyPostStatusLoading] =
+    useState(true);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -210,6 +215,49 @@ export default function Home() {
     fetchUser();
   }, []);
 
+  useEffect(() => {
+    if (isAuthLoading) {
+      return;
+    }
+
+    if (!userId) {
+      return;
+    }
+
+    const fetchDailyPostStatus = async () => {
+      try {
+        const supabase = createClient();
+
+        const todayInKorea = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Seoul",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date());
+
+        const { data, error } = await supabase
+          .from("posts")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("daily_post_date", todayInKorea)
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error("오늘 기록 확인 실패 : ", error);
+          setHasPostedToday(false);
+          return;
+        }
+
+        setHasPostedToday(data !== null);
+      } finally {
+        setIsDailyPostStatusLoading(false);
+      }
+    };
+
+    fetchDailyPostStatus();
+  }, [isAuthLoading, userId]);
+
   const handleLogout = async () => {
     if (isSigningOut) {
       return;
@@ -235,7 +283,12 @@ export default function Home() {
   const handleSubmit = async () => {
     const trimmedContent = content.trim();
 
-    if (trimmedContent === "" || isSubmitting) {
+    if (
+      trimmedContent === "" ||
+      isSubmitting ||
+      isDailyPostStatusLoading ||
+      hasPostedToday
+    ) {
       return;
     }
 
@@ -269,11 +322,9 @@ export default function Home() {
       if (error) {
         console.error("게시글 저장 실퍠:", error);
 
-        if(error.code === "23505"){
-          setSubmitErrorMessage(
-            "오늘의 기록은 이미 남겼습니다.",
-          );
-        }else{
+        if (error.code === "23505") {
+          setSubmitErrorMessage("오늘의 기록은 이미 남겼습니다.");
+        } else {
           setSubmitErrorMessage(
             "하루 기록을 저장하지 못했습니다. 다시 시도해 주세요.",
           );
@@ -304,6 +355,7 @@ export default function Home() {
 
       setPosts((previousPosts) => [newPost, ...previousPosts]);
       setContent("");
+      setHasPostedToday(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -546,17 +598,31 @@ export default function Home() {
               value={content}
               onChange={(event) => setContent(event.target.value)}
               maxLength={MAX_CONTENT_LENGTH}
-              className="h-32 w-full resize-none rounded-xl border p-4 outline-none focus:border-emerald-400"
-              placeholder="오늘은 어떤 하루였나요? ^^"
+              disabled={isDailyPostStatusLoading || hasPostedToday}
+              className={`h-32 w-full resize-none rounded-xl border p-4 outline-none ${
+                isDailyPostStatusLoading || hasPostedToday
+                  ? "cursor-not-allowed bg-gray-50 text-gray-400"
+                  : "focus:border-emerald-400"
+              }`}
+              placeholder={
+                isDailyPostStatusLoading
+                  ? "오늘 기록을 확인하고 있습니다..."
+                  : hasPostedToday
+                    ? "오늘의 기록을 이미 남겼습니다."
+                    : "오늘은 어떤 하루였나요? ^^"
+              }
             />
 
-            {submitErrorMessage &&(
-              <p
-                role="alert"
-                className="mt-2 text-left text-sm text-red-500"
-              >
+            {hasPostedToday && (
+              <p className="mt-2 text-left text-sm text-emerald-600">
+                오늘의 기록을 완료했습니다. 내일 다시 만나요.
+              </p>
+            )}
+
+            {submitErrorMessage && (
+              <p role="alert" className="mt-2 text-left text-sm text-red-500">
                 {submitErrorMessage}
-              </p>  
+              </p>
             )}
 
             <div className="mt-4 flex items-center justify-between">
@@ -567,14 +633,28 @@ export default function Home() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={content.trim() === "" || isSubmitting}
+                disabled={
+                  content.trim() === "" ||
+                  isSubmitting ||
+                  isDailyPostStatusLoading ||
+                  hasPostedToday
+                }
                 className={`rounded-full px-5 py-2 font-semibold text-white transition ${
-                  content.trim() === "" || isSubmitting
+                  content.trim() === "" ||
+                  isSubmitting ||
+                  isDailyPostStatusLoading ||
+                  hasPostedToday
                     ? "cursor-not-allowed bg-gray-300"
                     : "bg-emerald-400 hover:bg-emerald-500"
                 }`}
               >
-                {isSubmitting ? "저장 중..." : "하루 남기기"}
+                {isDailyPostStatusLoading
+                  ? "확인 중..."
+                  : hasPostedToday
+                    ? "오늘 기록 완료"
+                    : isSubmitting
+                      ? "저장 중..."
+                      : "하루 남기기"}
               </button>
             </div>
           </div>
@@ -695,9 +775,7 @@ export default function Home() {
                 />
               ))
             )}
-            {!isPostsLoading && 
-             !hasPostsError && 
-             posts.length > 0 && (
+            {!isPostsLoading && !hasPostsError && posts.length > 0 && (
               <div className="pt-3 text-center">
                 {hasLoadMoreError ? (
                   <div>
