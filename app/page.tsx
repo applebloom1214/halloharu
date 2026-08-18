@@ -374,14 +374,14 @@ export default function Home() {
       setContent("");
       setHasPostedToday(true);
 
-      const {data : updatedStrek, error : streakError} = await supabase.rpc(
+      const {data : updatedStreak, error : streakError} = await supabase.rpc(
         "get_current_streak",
       );
 
       if(streakError){
         console.error("연속 기록 갱신 실패 : ", streakError);
       }else{
-        setCurrentStreak(updatedStrek ?? 0);
+        setCurrentStreak(updatedStreak ?? 0);
       }
 
     } finally {
@@ -518,6 +518,16 @@ export default function Home() {
         }else{
           setHasPostedToday(todayPost !== null);
           setSubmitErrorMessage(null);
+
+          const { data : updatedStreak, error : sterakError} = await supabase.rpc(
+            "get_current_streak",
+          );
+
+          if(sterakError){
+            console.error("연속 기록 갱신 실패 : ", sterakError);
+          }else{
+            setCurrentStreak(updatedStreak ?? 0);
+          }
         }
       }
     } finally {
