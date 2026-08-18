@@ -68,6 +68,7 @@ export default function Home() {
   );
   const [deletingPostId, setDeletingPostId] = useState<number | null>(null);
   const [hasPostedToday, setHasPostedToday] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState<number | null>(null);
   const [isDailyPostStatusLoading, setIsDailyPostStatusLoading] =
     useState(true);
 
@@ -253,6 +254,19 @@ export default function Home() {
         }
 
         setHasPostedToday(data !== null);
+
+        const {data : streak, error : sterakError} = await supabase.rpc(
+          "get_current_streak",
+        );
+
+        if(sterakError){
+          console.error("연속 기록 확인 실패:", sterakError);
+          return;
+        }
+
+        setCurrentStreak(streak ?? 0);
+
+
       } finally {
         setIsDailyPostStatusLoading(false);
       }
@@ -616,6 +630,12 @@ export default function Home() {
           </div>
         ) : userId ? (
           <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
+            {currentStreak !== null &&(
+              <p className="mb-3 text-sm font-medium text-orange-600">
+                🔥 {currentStreak}일 연속 기록 중
+              </p>
+            )}
+            
             <textarea
               value={content}
               onChange={(event) => setContent(event.target.value)}
