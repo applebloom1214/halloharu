@@ -373,6 +373,17 @@ export default function Home() {
       setPosts((previousPosts) => [newPost, ...previousPosts]);
       setContent("");
       setHasPostedToday(true);
+
+      const {data : updatedStrek, error : streakError} = await supabase.rpc(
+        "get_current_streak",
+      );
+
+      if(streakError){
+        console.error("연속 기록 갱신 실패 : ", streakError);
+      }else{
+        setCurrentStreak(updatedStrek ?? 0);
+      }
+
     } finally {
       setIsSubmitting(false);
     }
@@ -635,7 +646,7 @@ export default function Home() {
                 🔥 {currentStreak}일 연속 기록 중
               </p>
             )}
-            
+
             <textarea
               value={content}
               onChange={(event) => setContent(event.target.value)}
