@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import PostCard from "../components/PostCard";
+import RecordCalendar from "@/components/RecordCalendar";
 import { createClient } from "@/lib/supabase/client";
 
 type Post = {
@@ -691,6 +692,13 @@ export default function Home() {
               <p className="mt-1 text-xs text-gray-500">
                 총 {recordedDates.length}일 기록했어요.
               </p>
+            )}
+
+            {recordedDates !== null &&(
+              <RecordCalendar
+                recordedDates={recordedDates}
+                monthKey={getTodayInKorea().slice(0,7)}
+              />    
             )}
 
             <textarea
