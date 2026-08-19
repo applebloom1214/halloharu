@@ -69,6 +69,7 @@ export default function Home() {
   const [deletingPostId, setDeletingPostId] = useState<number | null>(null);
   const [hasPostedToday, setHasPostedToday] = useState(false);
   const [currentStreak, setCurrentStreak] = useState<number | null>(null);
+  const [recordedDates, setRecordedDates] = useState<string[] | null>(null);
   const [isDailyPostStatusLoading, setIsDailyPostStatusLoading] =
     useState(true);
 
@@ -273,6 +274,35 @@ export default function Home() {
     };
 
     fetchDailyPostStatus();
+  }, [isAuthLoading, userId]);
+
+  // 기록 날짜 불러오기
+  useEffect(() =>{
+    if(isAuthLoading || !userId) return;
+
+    const fetchRecordedDates = async () => {
+      const supabase = createClient();
+
+      const {data , error } = await supabase
+        .from("posts")
+        .select("daily_post_date")
+        .eq("user_id", userId)
+        .not("daily_post_date", "is", null)
+        .order("daily_post_date", {ascending:false});
+
+      if(error){
+        console.log("기록 날짜 불러오기 실퍠 : ",error);
+        return;
+      }  
+
+      const dates = (data ?? [])
+        .map((post) => post.daily_post_date)
+        .filter((date) : date is string => date !== null);
+
+        setRecordedDates(dates);
+    };
+
+    fetchRecordedDates();
   }, [isAuthLoading, userId]);
 
   const handleLogout = async () => {
@@ -654,6 +684,12 @@ export default function Home() {
             {currentStreak !== null &&(
               <p className="mb-3 text-sm font-medium text-orange-600">
                 🔥 {currentStreak}일 연속 기록 중
+              </p>
+            )}
+
+            {recordedDates !== null &&(
+              <p className="mt-1 text-xs text-gray-500">
+                총 {recordedDates.length}일 기록했어요.
               </p>
             )}
 
