@@ -573,6 +573,23 @@ export default function Home() {
           }else{
             setCurrentStreak(updatedStreak ?? 0);
           }
+
+          const { data : updatedDateRows, error : datesError} = await supabase
+            .from("posts")
+            .select("daily_post_date")
+            .eq("user_id", userId)
+            .not("daily_post_date", "is", null)
+            .order("daily_post_date", {ascending:false});
+
+          if(datesError){
+            console.error("기록 날짜 갱신 실패 : ", datesError);
+          }else{
+            const updatedDates = (updatedDateRows ?? [])
+              .map((post) => post.daily_post_date)
+              .filter((date): date is string => date !== null);
+
+            setRecordedDates(updatedDates);  
+          }
         }
       }
     } finally {
