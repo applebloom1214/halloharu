@@ -405,6 +405,20 @@ export default function Home() {
       setContent("");
       setHasPostedToday(true);
 
+      const todayInKorea = getTodayInKorea();
+
+      setRecordedDates((previousDates) =>{
+        if(previousDates === null){
+          return [todayInKorea];
+        }
+
+        if(previousDates.includes(todayInKorea)){
+          return previousDates;
+        }
+
+        return [todayInKorea, ...previousDates];
+      });
+
       const {data : updatedStreak, error : streakError} = await supabase.rpc(
         "get_current_streak",
       );
