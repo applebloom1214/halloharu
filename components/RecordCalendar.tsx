@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 type RecordCalendarProps = {
   recordedDates: string[];
   monthKey: string;
@@ -9,7 +13,21 @@ export default function RecordCalendar({
   recordedDates,
   monthKey,
 }: RecordCalendarProps) {
-  const [year, month] = monthKey.split("-").map(Number);
+  const [displayedMonth, setDisplayedMonth] = useState(monthKey);
+
+  const [year, month] = displayedMonth.split("-").map(Number);
+
+  const isCurrentMonth = displayedMonth === monthKey;
+
+  const changeMonth = (monthOffset: number) => {
+    const changeDate = new Date(Date.UTC(year, month - 1 + monthOffset, 1));
+
+    const changedMonth = `${changeDate.getUTCFullYear()}-${String(
+      changeDate.getUTCMonth() + 1,
+    ).padStart(2, "0")}`;
+
+    setDisplayedMonth(changedMonth);
+  };
 
   const firstDayOfMonth = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
 
@@ -23,12 +41,34 @@ export default function RecordCalendar({
   const recordedDateSet = new Set(recordedDates);
 
   return (
-    <section className="mt-4 rounded-2xl border border-orange-100 bg-orange-50/40 p-4">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="mx-auto mt-4 mb-4 w-full max-w-sm rounded-2xl border border-orange-100 bg-orange-50/40 p-3">
+      <div className="mb-2 flex items-center justify-between">
         <h2 className="font-semibold text-gray-800">나의 기록 달력</h2>
-        <p className="text-sm text-gray-500">
-          {year}년 {month}월
-        </p>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => changeMonth(-1)}
+            aria-label="이전 달"
+            className="rounded-full px-2 py-1 text-gray-500 hover:bg-orange-100"
+          >
+            ←
+          </button>
+
+          <p className="text-sm text-gray-500">
+            {year}년 {month}월
+          </p>
+
+          <button
+            type="button"
+            onClick={() => changeMonth(1)}
+            disabled={isCurrentMonth}
+            aria-label="다음 달"
+            className="rounded-full px-2 py-1 text-gray-500 hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            →
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-7 text-center text-xs text-gray-400">
