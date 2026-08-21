@@ -629,6 +629,15 @@ export default function Home() {
               .filter((date): date is string => date !== null);
 
             setRecordedDates(updatedDates);  
+
+            if(
+              selectedRecordDate !== null &&
+              !updatedDates.includes(selectedRecordDate)
+            ){
+              setSelectRecordDate(null);
+              setSelectedRecordContent(null);
+              setSelectedRecordError(null);
+            }
           }
         }
       }
