@@ -71,6 +71,7 @@ export default function Home() {
   const [hasPostedToday, setHasPostedToday] = useState(false);
   const [currentStreak, setCurrentStreak] = useState<number | null>(null);
   const [recordedDates, setRecordedDates] = useState<string[] | null>(null);
+  const [selectedRecordDate, setSelectRecordDate] = useState<string | null>(null,);
   const [isDailyPostStatusLoading, setIsDailyPostStatusLoading] =
     useState(true);
 
@@ -729,7 +730,14 @@ export default function Home() {
               <RecordCalendar
                 recordedDates={recordedDates}
                 monthKey={getTodayInKorea().slice(0,7)}
-              />    
+                onDateSelect = {(dateKey) => setSelectRecordDate(dateKey)}
+              />
+            )}
+
+            {selectedRecordDate !== null &&(
+              <p className="mt-2 mb-2 text-center text-sm text-gray-500">
+                선택한 날짜 : {selectedRecordDate}
+              </p>
             )}
 
             <textarea

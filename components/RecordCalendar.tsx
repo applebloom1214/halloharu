@@ -5,6 +5,7 @@ import { useState } from "react";
 type RecordCalendarProps = {
   recordedDates: string[];
   monthKey: string;
+  onDateSelect: (dateKey: string) => void;
 };
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -12,6 +13,7 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 export default function RecordCalendar({
   recordedDates,
   monthKey,
+  onDateSelect,
 }: RecordCalendarProps) {
   const [displayedMonth, setDisplayedMonth] = useState(monthKey);
 
@@ -92,17 +94,22 @@ export default function RecordCalendar({
           const isRecorded = recordedDateSet.has(dateKey);
 
           return (
-            <div
+            <button
               key={dateKey}
-              title={isRecorded ? `${dateKey} 기록 완료` : undefined}
+              type="button"
+              disabled={!isRecorded}
+              onClick={() => onDateSelect(dateKey)}
+              aria-label={
+                isRecorded ? `${dateKey} 기록 보기` : `${dateKey} 기록 없음`
+              }
               className={`flex aspect-square items-center justify-center rounded-full text-sm ${
                 isRecorded
-                  ? "bg-orange-500 font-semibold text-white"
-                  : "text-gray-600"
+                  ? "cursor-pointer bg-orange-500 font-semibold text-white hover:bg-orange-600"
+                  : "cursor-default text-gray-600"
               }`}
             >
               {day}
-            </div>
+            </button>
           );
         })}
       </div>
