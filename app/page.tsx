@@ -683,6 +683,10 @@ export default function Home() {
       ),
     );
 
+    if(selectedRecordDate !== null){
+      await handleCalendarDateSelect(selectedRecordDate);
+    }
+
     return true;
   };
 
