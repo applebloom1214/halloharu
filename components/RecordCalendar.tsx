@@ -5,6 +5,7 @@ import { useState } from "react";
 type RecordCalendarProps = {
   recordedDates: string[];
   monthKey: string;
+  selectedDate: string | null;
   onDateSelect: (dateKey: string) => void;
 };
 
@@ -13,6 +14,7 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 export default function RecordCalendar({
   recordedDates,
   monthKey,
+  selectedDate,
   onDateSelect,
 }: RecordCalendarProps) {
   const [displayedMonth, setDisplayedMonth] = useState(monthKey);
@@ -93,6 +95,8 @@ export default function RecordCalendar({
 
           const isRecorded = recordedDateSet.has(dateKey);
 
+          const isSelected = selectedDate === dateKey;
+
           return (
             <button
               key={dateKey}
@@ -106,7 +110,7 @@ export default function RecordCalendar({
                 isRecorded
                   ? "cursor-pointer bg-orange-500 font-semibold text-white hover:bg-orange-600"
                   : "cursor-default text-gray-600"
-              }`}
+              } ${isSelected ? "ring-2 ring-orange-300 ring-offset-2" : ""}`}
             >
               {day}
             </button>

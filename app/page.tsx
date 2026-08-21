@@ -769,6 +769,7 @@ export default function Home() {
               <RecordCalendar
                 recordedDates={recordedDates}
                 monthKey={getTodayInKorea().slice(0,7)}
+                selectedDate = {selectedRecordDate}
                 onDateSelect = {handleCalendarDateSelect}
               />
             )}
