@@ -72,6 +72,9 @@ export default function Home() {
   const [currentStreak, setCurrentStreak] = useState<number | null>(null);
   const [recordedDates, setRecordedDates] = useState<string[] | null>(null);
   const [selectedRecordDate, setSelectRecordDate] = useState<string | null>(null,);
+  const [selectedRecordContent, setSelectedRecordContent] = useState<string | null>(null);
+  const [isSelectedRecordLoading, setIsSelectedRecordLoading] = useState(false);
+  const [selectedRecordError, setSelectedRecordError] = useState<string | null>(null);
   const [isDailyPostStatusLoading, setIsDailyPostStatusLoading] =
     useState(true);
 
@@ -328,6 +331,42 @@ export default function Home() {
 
     window.location.href = "/";
   };
+
+  const handleCalendarDateSelect = async (dateKey : string) => {
+    if(!userId) return;
+
+    setSelectRecordDate(dateKey);
+    setSelectedRecordContent(null);
+    setSelectedRecordError(null);
+    setIsSelectedRecordLoading(true);
+
+    try{
+      const supabase = createClient();
+
+      const {data, error} = await supabase
+        .from("posts")
+        .select("content")
+        .eq("user_id", userId)
+        .eq("daily_post_date", dateKey)
+        .maybeSingle();
+
+      if(error){
+        console.error("선택한 기록 불러오기 실패 : ",error);
+        setSelectedRecordError("기록을 불러오지 못했습니다.");
+        return;
+      }
+      
+      if(data === null){
+        setSelectedRecordError("해당 날짜의 기록을 찾을 수 없습니다.");
+        return;
+      }
+
+      setSelectedRecordContent(data.content);
+    }finally{
+      setIsSelectedRecordLoading(false);
+    }
+  };
+
 
   const handleSubmit = async () => {
     const trimmedContent = content.trim();
@@ -730,14 +769,28 @@ export default function Home() {
               <RecordCalendar
                 recordedDates={recordedDates}
                 monthKey={getTodayInKorea().slice(0,7)}
-                onDateSelect = {(dateKey) => setSelectRecordDate(dateKey)}
+                onDateSelect = {handleCalendarDateSelect}
               />
             )}
 
             {selectedRecordDate !== null &&(
-              <p className="mt-2 mb-2 text-center text-sm text-gray-500">
-                선택한 날짜 : {selectedRecordDate}
-              </p>
+              <section className="mx-auto mt-3 w-full max-w-sm rounded-xl border border-gray-200 bg-white p-4">
+                <p className="mb-2 text-sm font-semibold text-gray-700">
+                  {selectedRecordDate}의 기록
+                </p>
+
+                {isSelectedRecordLoading ? (
+                  <p className="text-sm text-gray-400">기록을 불러오는 중...</p>
+                ) : selectedRecordError ? (
+                  <p role="alert" className="text-sm text-red-500">
+                    {selectedRecordError}
+                  </p>
+                ) : selectedRecordContent !== null ? (
+                  <p className="whitespace-pre-wrap break-words text-sm text-gray=700">
+                    {selectedRecordContent}
+                  </p>
+                ) : null}
+              </section>  
             )}
 
             <textarea
