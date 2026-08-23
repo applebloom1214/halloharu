@@ -44,12 +44,12 @@ type DatabaseReaction = {
 const MAX_CONTENT_LENGTH = 300;
 const POSTS_PER_PAGE = 10;
 
-const getTodayInKorea = () => 
+const getTodayInKorea = () =>
   new Intl.DateTimeFormat("en-CA", {
-    timeZone : "Asia/Seoul",
-    year : "numeric",
-    month : "2-digit",
-    day : "2-digit",
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(new Date());
 
 export default function Home() {
@@ -71,10 +71,16 @@ export default function Home() {
   const [hasPostedToday, setHasPostedToday] = useState(false);
   const [currentStreak, setCurrentStreak] = useState<number | null>(null);
   const [recordedDates, setRecordedDates] = useState<string[] | null>(null);
-  const [selectedRecordDate, setSelectRecordDate] = useState<string | null>(null,);
-  const [selectedRecordContent, setSelectedRecordContent] = useState<string | null>(null);
+  const [selectedRecordDate, setSelectRecordDate] = useState<string | null>(
+    null,
+  );
+  const [selectedRecordContent, setSelectedRecordContent] = useState<
+    string | null
+  >(null);
   const [isSelectedRecordLoading, setIsSelectedRecordLoading] = useState(false);
-  const [selectedRecordError, setSelectedRecordError] = useState<string | null>(null);
+  const [selectedRecordError, setSelectedRecordError] = useState<string | null>(
+    null,
+  );
   const [isDailyPostStatusLoading, setIsDailyPostStatusLoading] =
     useState(true);
 
@@ -82,6 +88,11 @@ export default function Home() {
   const [userId, setUserId] = useState<string | null>(null);
   const [userNickname, setUserNickname] = useState<string | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [nicknameInput, setNicknameInput] = useState("");
+  const [isNicknameSaving, setIsNicknameSaving] = useState(false);
+  const [nicknameErrorMessage, setNicknameErrorMessage] = useState<
+    string | null
+  >(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -216,7 +227,6 @@ export default function Home() {
     fetchPosts();
   }, [isAuthLoading, userId, postFilter, postsLimit, postsRetryCount]);
 
-  
   // 사용자 정보 불러오기
   useEffect(() => {
     const fetchUser = async () => {
@@ -234,34 +244,35 @@ export default function Home() {
     fetchUser();
   }, []);
 
-  useEffect(() =>{
-    if(isAuthLoading || !userId){
+  // 프로필 불러오기
+  useEffect(() => {
+    if (isAuthLoading || !userId) {
       return;
     }
 
     const fetchProfile = async () => {
-      try{
+      try {
         const supabase = createClient();
 
-        const {data, error} = await supabase
+        const { data, error } = await supabase
           .from("profiles")
           .select("nickname")
           .eq("id", userId)
           .maybeSingle();
 
-          if(error){
-            console.error("프로필 불러오기 실패", error);
-            return;
-          }
+        if (error) {
+          console.error("프로필 불러오기 실패", error);
+          return;
+        }
 
-          setUserNickname(data?.nickname ?? null);
-      }finally{
+        setUserNickname(data?.nickname ?? null);
+      } finally {
         setIsProfileLoading(false);
       }
     };
 
     fetchProfile();
-  },[isAuthLoading, userId]);
+  }, [isAuthLoading, userId]);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -294,18 +305,15 @@ export default function Home() {
 
         setHasPostedToday(data !== null);
 
-        const {data : streak, error : sterakError} = await supabase.rpc(
-          "get_current_streak",
-        );
+        const { data: streak, error: sterakError } =
+          await supabase.rpc("get_current_streak");
 
-        if(sterakError){
+        if (sterakError) {
           console.error("연속 기록 확인 실패:", sterakError);
           return;
         }
 
         setCurrentStreak(streak ?? 0);
-
-
       } finally {
         setIsDailyPostStatusLoading(false);
       }
@@ -315,33 +323,80 @@ export default function Home() {
   }, [isAuthLoading, userId]);
 
   // 기록 날짜 불러오기
-  useEffect(() =>{
-    if(isAuthLoading || !userId) return;
+  useEffect(() => {
+    if (isAuthLoading || !userId) return;
 
     const fetchRecordedDates = async () => {
       const supabase = createClient();
 
-      const {data , error } = await supabase
+      const { data, error } = await supabase
         .from("posts")
         .select("daily_post_date")
         .eq("user_id", userId)
         .not("daily_post_date", "is", null)
-        .order("daily_post_date", {ascending:false});
+        .order("daily_post_date", { ascending: false });
 
-      if(error){
-        console.log("기록 날짜 불러오기 실퍠 : ",error);
+      if (error) {
+        console.log("기록 날짜 불러오기 실퍠 : ", error);
         return;
-      }  
+      }
 
       const dates = (data ?? [])
         .map((post) => post.daily_post_date)
-        .filter((date) : date is string => date !== null);
+        .filter((date): date is string => date !== null);
 
-        setRecordedDates(dates);
+      setRecordedDates(dates);
     };
 
     fetchRecordedDates();
   }, [isAuthLoading, userId]);
+
+  const handleNicknameSubmit = async () => {
+    const trimmedNickname = nicknameInput.trim();
+
+    if (!userId || isNicknameSaving) {
+      return;
+    }
+
+    const nicknamePattern = /^[가-힣A-Za-z0-9]{2,12}$/;
+
+    if (!nicknamePattern.test(trimmedNickname)) {
+      setNicknameErrorMessage(
+        "닉네임은 2~12자의 한글, 영문, 숫자만 사용할 수 있습니다.",
+      );
+      return;
+    }
+
+    setNicknameErrorMessage(null);
+    setIsNicknameSaving(true);
+
+    try {
+      const supabase = createClient();
+
+      const { error } = await supabase.from("profiles").insert({
+        id: userId,
+        nickname: trimmedNickname,
+      });
+
+      if (error) {
+        console.error("닉네임 저장 실패 : ", error);
+
+        if (error.code === "23505") {
+          setNicknameErrorMessage("이미 사용 중인 닉네임입니다.");
+        } else {
+          setNicknameErrorMessage(
+            "닉네임을 저장하지 못했습니다. 다시 시도해 주세요.",
+          );
+        }
+        return;
+      }
+
+      setUserNickname(trimmedNickname);
+      setNicknameInput("");
+    } finally {
+      setIsNicknameSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     if (isSigningOut) {
@@ -365,41 +420,40 @@ export default function Home() {
     window.location.href = "/";
   };
 
-  const handleCalendarDateSelect = async (dateKey : string) => {
-    if(!userId) return;
+  const handleCalendarDateSelect = async (dateKey: string) => {
+    if (!userId) return;
 
     setSelectRecordDate(dateKey);
     setSelectedRecordContent(null);
     setSelectedRecordError(null);
     setIsSelectedRecordLoading(true);
 
-    try{
+    try {
       const supabase = createClient();
 
-      const {data, error} = await supabase
+      const { data, error } = await supabase
         .from("posts")
         .select("content")
         .eq("user_id", userId)
         .eq("daily_post_date", dateKey)
         .maybeSingle();
 
-      if(error){
-        console.error("선택한 기록 불러오기 실패 : ",error);
+      if (error) {
+        console.error("선택한 기록 불러오기 실패 : ", error);
         setSelectedRecordError("기록을 불러오지 못했습니다.");
         return;
       }
-      
-      if(data === null){
+
+      if (data === null) {
         setSelectedRecordError("해당 날짜의 기록을 찾을 수 없습니다.");
         return;
       }
 
       setSelectedRecordContent(data.content);
-    }finally{
+    } finally {
       setIsSelectedRecordLoading(false);
     }
   };
-
 
   const handleSubmit = async () => {
     const trimmedContent = content.trim();
@@ -480,28 +534,26 @@ export default function Home() {
 
       const todayInKorea = getTodayInKorea();
 
-      setRecordedDates((previousDates) =>{
-        if(previousDates === null){
+      setRecordedDates((previousDates) => {
+        if (previousDates === null) {
           return [todayInKorea];
         }
 
-        if(previousDates.includes(todayInKorea)){
+        if (previousDates.includes(todayInKorea)) {
           return previousDates;
         }
 
         return [todayInKorea, ...previousDates];
       });
 
-      const {data : updatedStreak, error : streakError} = await supabase.rpc(
-        "get_current_streak",
-      );
+      const { data: updatedStreak, error: streakError } =
+        await supabase.rpc("get_current_streak");
 
-      if(streakError){
+      if (streakError) {
         console.error("연속 기록 갱신 실패 : ", streakError);
-      }else{
+      } else {
         setCurrentStreak(updatedStreak ?? 0);
       }
-
     } finally {
       setIsSubmitting(false);
     }
@@ -631,42 +683,41 @@ export default function Home() {
           .limit(1)
           .maybeSingle();
 
-        if(todayPostError){
-          console.error("삭제 후 오늘 기록 확인 실패 :", todayPostError,);
-        }else{
+        if (todayPostError) {
+          console.error("삭제 후 오늘 기록 확인 실패 :", todayPostError);
+        } else {
           setHasPostedToday(todayPost !== null);
           setSubmitErrorMessage(null);
 
-          const { data : updatedStreak, error : sterakError} = await supabase.rpc(
-            "get_current_streak",
-          );
+          const { data: updatedStreak, error: sterakError } =
+            await supabase.rpc("get_current_streak");
 
-          if(sterakError){
+          if (sterakError) {
             console.error("연속 기록 갱신 실패 : ", sterakError);
-          }else{
+          } else {
             setCurrentStreak(updatedStreak ?? 0);
           }
 
-          const { data : updatedDateRows, error : datesError} = await supabase
+          const { data: updatedDateRows, error: datesError } = await supabase
             .from("posts")
             .select("daily_post_date")
             .eq("user_id", userId)
             .not("daily_post_date", "is", null)
-            .order("daily_post_date", {ascending:false});
+            .order("daily_post_date", { ascending: false });
 
-          if(datesError){
+          if (datesError) {
             console.error("기록 날짜 갱신 실패 : ", datesError);
-          }else{
+          } else {
             const updatedDates = (updatedDateRows ?? [])
               .map((post) => post.daily_post_date)
               .filter((date): date is string => date !== null);
 
-            setRecordedDates(updatedDates);  
+            setRecordedDates(updatedDates);
 
-            if(
+            if (
               selectedRecordDate !== null &&
               !updatedDates.includes(selectedRecordDate)
-            ){
+            ) {
               setSelectRecordDate(null);
               setSelectedRecordContent(null);
               setSelectedRecordError(null);
@@ -716,7 +767,7 @@ export default function Home() {
       ),
     );
 
-    if(selectedRecordDate !== null){
+    if (selectedRecordDate !== null) {
       await handleCalendarDateSelect(selectedRecordDate);
     }
 
@@ -808,34 +859,66 @@ export default function Home() {
                 {userNickname}님, 반가워요.
               </p>
             ) : (
-              <p className="mb-3 text-sm font-medium text-orange-600">
-                사용할 닉네임을 설정해 주세요.
-              </p>
+              <div className="mb-5 rounded-xl border border-orange-100 bg-orange-50 p-4">
+                <p className="mb-3 text-sm font-medium text-orange-600">
+                  사용할 닉네임을 설정해 주세요.
+                </p>
+
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={nicknameInput}
+                    onChange={(event) => setNicknameInput(event.target.value)}
+                    maxLength={12}
+                    placeholder="닉네임 입력"
+                    disabled={isNicknameSaving}
+                    className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-orange-300 disabled:bg-gray-100"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={handleNicknameSubmit}
+                    disabled={nicknameInput.trim() === "" || isNicknameSaving}
+                    className="shrink-0 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                  >
+                    {isNicknameSaving ? "저장 중..." : "저장"}
+                  </button>
+                </div>
+
+                <p className="mt-2 text-xs text-gray-500">
+                  2~12자의 한글, 영문, 숫자를 사용할 수 있습니다.
+                </p>
+
+                {nicknameErrorMessage && (
+                  <p role="alert" className="mt-2 text-sm text-red-500">
+                    {nicknameErrorMessage}
+                  </p>
+                )}
+              </div>
             )}
 
-
-            {currentStreak !== null &&(
+            {currentStreak !== null && (
               <p className="mb-3 text-sm font-medium text-orange-600">
                 🔥 {currentStreak}일 연속 기록 중
               </p>
             )}
 
-            {recordedDates !== null &&(
+            {recordedDates !== null && (
               <p className="mt-1 text-xs text-gray-500">
                 총 {recordedDates.length}일 기록했어요.
               </p>
             )}
 
-            {recordedDates !== null &&(
+            {recordedDates !== null && (
               <RecordCalendar
                 recordedDates={recordedDates}
-                monthKey={getTodayInKorea().slice(0,7)}
-                selectedDate = {selectedRecordDate}
-                onDateSelect = {handleCalendarDateSelect}
+                monthKey={getTodayInKorea().slice(0, 7)}
+                selectedDate={selectedRecordDate}
+                onDateSelect={handleCalendarDateSelect}
               />
             )}
 
-            {selectedRecordDate !== null &&(
+            {selectedRecordDate !== null && (
               <section className="mx-auto mt-3 w-full max-w-sm rounded-xl border border-gray-200 bg-white p-4">
                 <p className="mb-2 text-sm font-semibold text-gray-700">
                   {selectedRecordDate}의 기록
@@ -852,7 +935,7 @@ export default function Home() {
                     {selectedRecordContent}
                   </p>
                 ) : null}
-              </section>  
+              </section>
             )}
 
             <textarea
