@@ -80,6 +80,8 @@ export default function Home() {
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userNickname, setUserNickname] = useState<string | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -214,6 +216,8 @@ export default function Home() {
     fetchPosts();
   }, [isAuthLoading, userId, postFilter, postsLimit, postsRetryCount]);
 
+  
+  // 사용자 정보 불러오기
   useEffect(() => {
     const fetchUser = async () => {
       const supabase = createClient();
@@ -229,6 +233,35 @@ export default function Home() {
     };
     fetchUser();
   }, []);
+
+  useEffect(() =>{
+    if(isAuthLoading || !userId){
+      return;
+    }
+
+    const fetchProfile = async () => {
+      try{
+        const supabase = createClient();
+
+        const {data, error} = await supabase
+          .from("profiles")
+          .select("nickname")
+          .eq("id", userId)
+          .maybeSingle();
+
+          if(error){
+            console.error("프로필 불러오기 실패", error);
+            return;
+          }
+
+          setUserNickname(data?.nickname ?? null);
+      }finally{
+        setIsProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+  },[isAuthLoading, userId]);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -766,6 +799,21 @@ export default function Home() {
           </div>
         ) : userId ? (
           <div className="mt-10 rounded-2xl border bg-white p-5 shadow-sm">
+            {isProfileLoading ? (
+              <p className="mb-3 text-sm text-gray-400">
+                프로필을 확인하고 있습니다...
+              </p>
+            ) : userNickname ? (
+              <p className="mb-3 text-sm font-medium text-emerald-600">
+                {userNickname}님, 반가워요.
+              </p>
+            ) : (
+              <p className="mb-3 text-sm font-medium text-orange-600">
+                사용할 닉네임을 설정해 주세요.
+              </p>
+            )}
+
+
             {currentStreak !== null &&(
               <p className="mb-3 text-sm font-medium text-orange-600">
                 🔥 {currentStreak}일 연속 기록 중
