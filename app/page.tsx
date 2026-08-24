@@ -799,7 +799,9 @@ export default function Home() {
             ) : userEmail ? (
               <>
                 <span className="hidden max-w-48 truncate text-sm text-gray-500 sm:inline">
-                  {userEmail}
+                  {isProfileLoading
+                    ? "프로필 확인 중..."
+                    : (userNickname ?? userEmail)}
                 </span>
 
                 <button
