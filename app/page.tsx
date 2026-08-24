@@ -93,6 +93,7 @@ export default function Home() {
   const [nicknameErrorMessage, setNicknameErrorMessage] = useState<
     string | null
   >(null);
+  const [isNicknameEditing, setIsNicknameEditing] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -857,9 +858,61 @@ export default function Home() {
                 프로필을 확인하고 있습니다...
               </p>
             ) : userNickname ? (
-              <p className="mb-3 text-sm font-medium text-emerald-600">
-                {userNickname}님, 반가워요.
-              </p>
+              <div className="mb-4">
+                {isNicknameEditing ? (
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+                    <p className="text-sm font-medium text-emerald-700">
+                      닉네임 수정
+                    </p>
+
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        type="text"
+                        value={nicknameInput}
+                        onChange={(event) =>
+                          setNicknameInput(event.target.value)
+                        }
+                        maxLength={12}
+                        className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-emerald-300"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNicknameInput("");
+                          setNicknameErrorMessage(null);
+                          setIsNicknameEditing(false);
+                        }}
+                        className="shrink-0 rounded-xl border bg-white px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                      >
+                        취소
+                      </button>
+                    </div>
+
+                    <p className="mt-2 text-xs text-gray-500">
+                      2~12자의 한글, 영문, 숫자를 사용할 수 있습니다.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="text-sm font-medium text-emerald-600">
+                      {userNickname}님, 반가워요.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNicknameInput(userNickname);
+                        setNicknameErrorMessage(null);
+                        setIsNicknameEditing(true);
+                      }}
+                      className="text-xs text-gray-400 hover:text-emerald-600"
+                    >
+                      수정
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="mb-5 rounded-xl border border-orange-100 bg-orange-50 p-4">
                 <p className="mb-3 text-sm font-medium text-orange-600">
