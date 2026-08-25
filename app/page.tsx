@@ -399,6 +399,59 @@ export default function Home() {
     }
   };
 
+  const handleNicknameUpdate = async () =>{
+    const trimmedNickname = nicknameInput.trim();
+
+    if(!userId || !userNickname || isNicknameSaving){
+      return;
+    }
+
+    const nicknamePattern = /^[가-힣A-Za-z0-9]{2,12}$/;
+
+    if(!nicknamePattern.test(trimmedNickname)){
+      setNicknameErrorMessage(
+        "닉네임은 2~12자의 한글, 영문, 숫자만 사용할 수 있습니다.",
+      );
+      return;
+    }
+
+    setNicknameErrorMessage(null);
+    setIsNicknameSaving(true);
+
+    try{
+      const supabase = createClient();
+
+      const {data , error} = await supabase
+        .from("profiles")
+        .update({
+          nickname : trimmedNickname,
+        })
+        .eq("id", userId)
+        .select("nickname")
+        .single();
+
+        if(error){
+          console.error("닉네임 수정 실퍠 : ", error);
+
+          if(error.code === "23505"){
+            setNicknameErrorMessage("이미 사용 중인 닉네임입니다.");
+          }else{
+            setNicknameErrorMessage(
+              "닉네임을 수정하지 못했습니다. 다시 시도해 주세요.",
+            );
+          }
+
+          return;
+        }
+
+        setUserNickname(data.nickname);
+        setNicknameInput("");
+        setIsNicknameEditing(false);
+    }finally{
+      setIsNicknameSaving(false);
+    }
+  };
+
   const handleLogout = async () => {
     if (isSigningOut) {
       return;
@@ -873,7 +926,8 @@ export default function Home() {
                           setNicknameInput(event.target.value)
                         }
                         maxLength={12}
-                        className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-emerald-300"
+                        disabled ={isNicknameSaving}
+                        className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-emerald-300 disabled:bg-gray-100"
                       />
 
                       <button
@@ -883,15 +937,30 @@ export default function Home() {
                           setNicknameErrorMessage(null);
                           setIsNicknameEditing(false);
                         }}
-                        className="shrink-0 rounded-xl border bg-white px-4 py-2 text-sm text-gray-500 hover:bg-gray-50"
+                        disabled = {isNicknameSaving}
+                        className="shrink-0 rounded-xl border bg-white px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300"
                       >
                         취소
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleNicknameUpdate}
+                        disabled={nicknameInput.trim()==="" || isNicknameSaving}
+                        className="shrink-0 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+                      >
+                        {isNicknameSaving ? "저장 중..." : "저장"}
                       </button>
                     </div>
 
                     <p className="mt-2 text-xs text-gray-500">
                       2~12자의 한글, 영문, 숫자를 사용할 수 있습니다.
                     </p>
+                    {nicknameErrorMessage && (
+                      <p role="alert" className="mt-2 text-sm text-red-500">
+                        {nicknameErrorMessage}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">
