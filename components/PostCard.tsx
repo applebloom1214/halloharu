@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 type PostCardProps ={
+  authorNickname : string | null;  
   content: string;
   createdAt : string;
   empathyCount: number;
@@ -25,6 +26,7 @@ type PostCardProps ={
 };
 
 export default function PostCard({
+    authorNickname,
     content,
     createdAt,
     empathyCount,
@@ -103,6 +105,10 @@ export default function PostCard({
         <div className="rounded-2xl border bg-white p-4"> 
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
+                    <p className="mb-2 text-xs font-semibold text-emerald-600">
+                        {authorNickname ?? "익명"}
+                    </p>
+                    
                     {isEditing ?(
                         <div>
                             <textarea

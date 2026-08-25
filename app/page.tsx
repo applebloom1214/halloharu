@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 type Post = {
   id: number;
   userId: string | null;
+  authorNickname : string | null;
   content: string;
   empathyCount: number;
   cheerCount: number;
@@ -19,6 +20,11 @@ type Post = {
   isCheered: boolean;
   isSmiled: boolean;
   createdAt: string;
+};
+
+type DatabaseProfile ={
+  id : string;
+  nickname : string;
 };
 
 type DatabasePost = {
@@ -163,6 +169,33 @@ export default function Home() {
 
         const displayedDatabasePosts = databasePosts.slice(0, postsLimit);
 
+        const authorIds = [
+          ...new Set(
+            displayedDatabasePosts
+              .map((post) => post.user_id)
+              .filter((id): id is string => id !== null),
+          ),
+        ];
+
+        const authorNicknameById = new Map<string, string>();
+
+        if(authorIds.length > 0){
+          const { data : profileData , error : profileError} = await supabase
+            .from("profiles")
+            .select("id, nickname")
+            .in("id", authorIds);
+
+            if(profileError){
+              console.error("작성자 프로필 불러오기 실패:", profileError);
+            }else{
+              const databaseProfiles = (profileData ?? []) as DatabaseProfile[];
+
+              databaseProfiles.forEach((profile) =>{
+                authorNicknameById.set(profile.id, profile.nickname);
+              });
+            }
+        }
+
         setHasMorePosts(hasMore);
 
         const convertedPosts: Post[] = displayedDatabasePosts.map((post) => {
@@ -207,6 +240,10 @@ export default function Home() {
           return {
             id: post.id,
             userId: post.user_id,
+            authorNickname:
+              post.user_id !== null
+                ? (authorNicknameById.get(post.user_id) ?? null)
+                : null,
             content: post.content,
             empathyCount,
             cheerCount,
@@ -572,6 +609,7 @@ export default function Home() {
       const newPost: Post = {
         id: databasePost.id,
         userId: databasePost.user_id,
+        authorNickname : userNickname,
         content: databasePost.content,
         empathyCount: 0,
         cheerCount: 0,
@@ -1214,6 +1252,7 @@ export default function Home() {
               posts.map((post) => (
                 <PostCard
                   key={post.id}
+                  authorNickname={post.authorNickname}
                   content={post.content}
                   createdAt={post.createdAt}
                   empathyCount={post.empathyCount}
