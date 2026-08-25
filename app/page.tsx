@@ -482,6 +482,18 @@ export default function Home() {
         }
 
         setUserNickname(data.nickname);
+
+        setPosts((previousPosts) =>
+          previousPosts.map((post) =>
+            post.userId === userId
+              ? {
+                ...post,
+                authorNickname : data.nickname,
+              }
+              : post,
+            ),
+          );
+
         setNicknameInput("");
         setIsNicknameEditing(false);
     }finally{
