@@ -109,6 +109,12 @@ export default function Home() {
 
   const pendingReactionsKeysRef = useRef<Set<string>>(new Set());
 
+  const isPostCreationUnavailable =
+    isPostsLoading ||
+    userNickname === null ||
+    isDailyPostStatusLoading ||
+    hasPostedToday;
+
   useEffect(() => {
     if (isAuthLoading) {
       return;
@@ -564,8 +570,7 @@ export default function Home() {
     if (
       trimmedContent === "" ||
       isSubmitting ||
-      isDailyPostStatusLoading ||
-      hasPostedToday
+      isPostCreationUnavailable
     ) {
       return;
     }
@@ -1116,18 +1121,22 @@ export default function Home() {
               value={content}
               onChange={(event) => setContent(event.target.value)}
               maxLength={MAX_CONTENT_LENGTH}
-              disabled={isDailyPostStatusLoading || hasPostedToday}
+              disabled={isPostCreationUnavailable}
               className={`h-32 w-full resize-none rounded-xl border p-4 outline-none ${
-                isDailyPostStatusLoading || hasPostedToday
+                isPostCreationUnavailable
                   ? "cursor-not-allowed bg-gray-50 text-gray-400"
                   : "focus:border-emerald-400"
               }`}
               placeholder={
-                isDailyPostStatusLoading
-                  ? "오늘 기록을 확인하고 있습니다..."
-                  : hasPostedToday
-                    ? "오늘의 기록을 이미 남겼습니다."
-                    : "오늘은 어떤 하루였나요? ^^"
+                isProfileLoading
+                  ? "프로필을 확인하고 있습니다..."
+                  : userNickname === null
+                    ? "닉네임을 먼저 설정해 주세요."
+                    : isDailyPostStatusLoading
+                      ? "오늘 기록을 확인하고 있습니다..."
+                      : hasPostedToday
+                        ? "오늘의 기록을 이미 남겼습니다."
+                        : "오늘은 어떤 하루였나요? ^^"
               }
             />
 
@@ -1154,25 +1163,27 @@ export default function Home() {
                 disabled={
                   content.trim() === "" ||
                   isSubmitting ||
-                  isDailyPostStatusLoading ||
-                  hasPostedToday
+                  isPostCreationUnavailable
                 }
                 className={`rounded-full px-5 py-2 font-semibold text-white transition ${
                   content.trim() === "" ||
                   isSubmitting ||
-                  isDailyPostStatusLoading ||
-                  hasPostedToday
+                  isPostCreationUnavailable
                     ? "cursor-not-allowed bg-gray-300"
                     : "bg-emerald-400 hover:bg-emerald-500"
                 }`}
               >
-                {isDailyPostStatusLoading
-                  ? "확인 중..."
-                  : hasPostedToday
-                    ? "오늘 기록 완료"
-                    : isSubmitting
-                      ? "저장 중..."
-                      : "하루 남기기"}
+                {isProfileLoading
+                  ? "프로필 확인 중..."
+                  : userNickname === null
+                    ? "닉네임 설정 필요"
+                    : isDailyPostStatusLoading
+                      ? "확인 중..."
+                      : hasPostedToday
+                        ? "오늘 기록 완료"
+                        : isSubmitting
+                          ? "저장 중..."
+                          : "하루 남기기"}
               </button>
             </div>
           </div>
