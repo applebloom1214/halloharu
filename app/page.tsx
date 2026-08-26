@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 type Post = {
   id: number;
   userId: string | null;
-  authorNickname : string | null;
+  authorNickname: string | null;
   content: string;
   empathyCount: number;
   cheerCount: number;
@@ -22,9 +22,9 @@ type Post = {
   createdAt: string;
 };
 
-type DatabaseProfile ={
-  id : string;
-  nickname : string;
+type DatabaseProfile = {
+  id: string;
+  nickname: string;
 };
 
 type DatabasePost = {
@@ -185,21 +185,21 @@ export default function Home() {
 
         const authorNicknameById = new Map<string, string>();
 
-        if(authorIds.length > 0){
-          const { data : profileData , error : profileError} = await supabase
+        if (authorIds.length > 0) {
+          const { data: profileData, error: profileError } = await supabase
             .from("profiles")
             .select("id, nickname")
             .in("id", authorIds);
 
-            if(profileError){
-              console.error("작성자 프로필 불러오기 실패:", profileError);
-            }else{
-              const databaseProfiles = (profileData ?? []) as DatabaseProfile[];
+          if (profileError) {
+            console.error("작성자 프로필 불러오기 실패:", profileError);
+          } else {
+            const databaseProfiles = (profileData ?? []) as DatabaseProfile[];
 
-              databaseProfiles.forEach((profile) =>{
-                authorNicknameById.set(profile.id, profile.nickname);
-              });
-            }
+            databaseProfiles.forEach((profile) => {
+              authorNicknameById.set(profile.id, profile.nickname);
+            });
+          }
         }
 
         setHasMorePosts(hasMore);
@@ -442,16 +442,16 @@ export default function Home() {
     }
   };
 
-  const handleNicknameUpdate = async () =>{
+  const handleNicknameUpdate = async () => {
     const trimmedNickname = nicknameInput.trim();
 
-    if(!userId || !userNickname || isNicknameSaving){
+    if (!userId || !userNickname || isNicknameSaving) {
       return;
     }
 
     const nicknamePattern = /^[가-힣A-Za-z0-9]{2,12}$/;
 
-    if(!nicknamePattern.test(trimmedNickname)){
+    if (!nicknamePattern.test(trimmedNickname)) {
       setNicknameErrorMessage(
         "닉네임은 2~12자의 한글, 영문, 숫자만 사용할 수 있습니다.",
       );
@@ -461,48 +461,48 @@ export default function Home() {
     setNicknameErrorMessage(null);
     setIsNicknameSaving(true);
 
-    try{
+    try {
       const supabase = createClient();
 
-      const {data , error} = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .update({
-          nickname : trimmedNickname,
+          nickname: trimmedNickname,
         })
         .eq("id", userId)
         .select("nickname")
         .single();
 
-        if(error){
-          console.error("닉네임 수정 실퍠 : ", error);
+      if (error) {
+        console.error("닉네임 수정 실퍠 : ", error);
 
-          if(error.code === "23505"){
-            setNicknameErrorMessage("이미 사용 중인 닉네임입니다.");
-          }else{
-            setNicknameErrorMessage(
-              "닉네임을 수정하지 못했습니다. 다시 시도해 주세요.",
-            );
-          }
-
-          return;
+        if (error.code === "23505") {
+          setNicknameErrorMessage("이미 사용 중인 닉네임입니다.");
+        } else {
+          setNicknameErrorMessage(
+            "닉네임을 수정하지 못했습니다. 다시 시도해 주세요.",
+          );
         }
 
-        setUserNickname(data.nickname);
+        return;
+      }
 
-        setPosts((previousPosts) =>
-          previousPosts.map((post) =>
-            post.userId === userId
-              ? {
+      setUserNickname(data.nickname);
+
+      setPosts((previousPosts) =>
+        previousPosts.map((post) =>
+          post.userId === userId
+            ? {
                 ...post,
-                authorNickname : data.nickname,
+                authorNickname: data.nickname,
               }
-              : post,
-            ),
-          );
+            : post,
+        ),
+      );
 
-        setNicknameInput("");
-        setIsNicknameEditing(false);
-    }finally{
+      setNicknameInput("");
+      setIsNicknameEditing(false);
+    } finally {
       setIsNicknameSaving(false);
     }
   };
@@ -567,11 +567,7 @@ export default function Home() {
   const handleSubmit = async () => {
     const trimmedContent = content.trim();
 
-    if (
-      trimmedContent === "" ||
-      isSubmitting ||
-      isPostCreationUnavailable
-    ) {
+    if (trimmedContent === "" || isSubmitting || isPostCreationUnavailable) {
       return;
     }
 
@@ -626,7 +622,7 @@ export default function Home() {
       const newPost: Post = {
         id: databasePost.id,
         userId: databasePost.user_id,
-        authorNickname : userNickname,
+        authorNickname: userNickname,
         content: databasePost.content,
         empathyCount: 0,
         cheerCount: 0,
@@ -981,7 +977,7 @@ export default function Home() {
                           setNicknameInput(event.target.value)
                         }
                         maxLength={12}
-                        disabled ={isNicknameSaving}
+                        disabled={isNicknameSaving}
                         className="min-w-0 flex-1 rounded-xl border bg-white px-3 py-2 text-sm outline-none focus:border-emerald-300 disabled:bg-gray-100"
                       />
 
@@ -992,7 +988,7 @@ export default function Home() {
                           setNicknameErrorMessage(null);
                           setIsNicknameEditing(false);
                         }}
-                        disabled = {isNicknameSaving}
+                        disabled={isNicknameSaving}
                         className="shrink-0 rounded-xl border bg-white px-4 py-2 text-sm text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300"
                       >
                         취소
@@ -1001,7 +997,9 @@ export default function Home() {
                       <button
                         type="button"
                         onClick={handleNicknameUpdate}
-                        disabled={nicknameInput.trim()==="" || isNicknameSaving}
+                        disabled={
+                          nicknameInput.trim() === "" || isNicknameSaving
+                        }
                         className="shrink-0 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-300"
                       >
                         {isNicknameSaving ? "저장 중..." : "저장"}
@@ -1076,16 +1074,30 @@ export default function Home() {
               </div>
             )}
 
-            {currentStreak !== null && (
-              <p className="mb-3 text-sm font-medium text-orange-600">
-                🔥 {currentStreak}일 연속 기록 중
-              </p>
-            )}
+            {currentStreak !== null && recordedDates !== null && (
+              <div className="mx-auto mb-4 grid w-full max-w-sm grid-cols-2 gap-2">
+                <div className="rounded-xl border border-orange-100 bg-orange-50 px-4 py-3">
+                  <p className="text-xs text-orange-600">현재 연속 기록</p>
 
-            {recordedDates !== null && (
-              <p className="mt-1 text-xs text-gray-500">
-                총 {recordedDates.length}일 기록했어요.
-              </p>
+                  <p className="mt-1 text-orange-700">
+                    🔥{" "}
+                    <span className="text-2xl font-bold">{currentStreak}</span>
+                    일
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                  <p className="text-xs text-emerald-600">총 기록</p>
+
+                  <p className="mt-1 text-emerald-700">
+                    📝{" "}
+                    <span className="text-2xl font-bold">
+                      {recordedDates.length}
+                    </span>
+                    일
+                  </p>
+                </div>
+              </div>
             )}
 
             {recordedDates !== null && (
