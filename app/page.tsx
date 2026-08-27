@@ -903,7 +903,7 @@ export default function Home() {
               <span className="text-sm text-gray-400">확인 중...</span>
             ) : userEmail ? (
               <>
-                <span className="hidden max-w-48 truncate text-sm text-gray-500 sm:inline">
+                <span className="max-w-24 truncate text-sm text-gray-500 sm:max-w-48">
                   {isProfileLoading
                     ? "프로필 확인 중..."
                     : (userNickname ?? userEmail)}
