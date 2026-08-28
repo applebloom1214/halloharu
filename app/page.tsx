@@ -902,11 +902,15 @@ export default function Home() {
             <span className="text-sm text-gray-400">확인 중...</span>
           ) : userEmail ? (
             <>
-              <span className="min-w-0 truncate text-sm text-gray-500 sm:max-w-48">
+              <Link
+                href="/profile"
+                title="프로필 설정"
+                className="min-w-0 truncate text-sm text-gray-500 transition hover:text-emerald-500 sm:max-w-48"
+              >
                 {isProfileLoading
                   ? "프로필 확인 중..."
                   : (userNickname ?? userEmail)}
-              </span>
+              </Link>
 
               <button
                 type="button"
