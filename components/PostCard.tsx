@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { useState } from "react";
 
 type PostCardProps ={
+  authorUserId : string | null;
   authorNickname : string | null;  
   content: string;
   createdAt : string;
@@ -26,6 +28,7 @@ type PostCardProps ={
 };
 
 export default function PostCard({
+    authorUserId,
     authorNickname,
     content,
     createdAt,
@@ -105,9 +108,18 @@ export default function PostCard({
         <div className="rounded-2xl border bg-white p-4"> 
             <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                    <p className="mb-2 text-xs font-semibold text-emerald-600">
-                        {authorNickname ?? "익명"}
-                    </p>
+                    {authorUserId ? (
+                        <Link
+                            href={`/users/${authorUserId}`}
+                            className="mb-2 inline-block text-xs font-semibold text-emerald-600 transition hover:text-emerald-700 hover:underline"
+                        >
+                            {authorNickname ?? "익명"}    
+                        </Link>    
+                    ) : (
+                        <p className="mb-2 text-xs font-semibold text-emerald-600">
+                            익명
+                        </p>
+                    )}
                     
                     {isEditing ?(
                         <div>

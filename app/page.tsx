@@ -1306,6 +1306,7 @@ export default function Home() {
               posts.map((post) => (
                 <PostCard
                   key={post.id}
+                  authorUserId={post.userId}
                   authorNickname={post.authorNickname}
                   content={post.content}
                   createdAt={post.createdAt}
