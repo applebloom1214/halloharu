@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { useEffect, useRef, useState } from "react";
 
-import PostCard from "../components/PostCard";
+import PostCard, { type ReportReason } from "../components/PostCard";
 import RecordCalendar from "@/components/RecordCalendar";
 import { createClient } from "@/lib/supabase/client";
 
@@ -19,6 +19,7 @@ type Post = {
   isEmpathized: boolean;
   isCheered: boolean;
   isSmiled: boolean;
+  isReported: boolean;
   createdAt: string;
 };
 
@@ -33,6 +34,10 @@ type DatabasePost = {
   content: string;
   created_at: string;
   reactions?: DatabaseReaction[];
+};
+
+type DatabaseReport = {
+  post_id: number;
 };
 
 type ReactionType = "empathy" | "cheer" | "smile";
@@ -202,6 +207,30 @@ export default function Home() {
           }
         }
 
+        const reportedPostIdSet = new Set<number>();
+
+        if (userId && displayedDatabasePosts.length > 0) {
+          const displayedPostIds = displayedDatabasePosts.map(
+            (post) => post.id,
+          );
+
+          const { data: reportData, error: reportError } = await supabase
+            .from("reports")
+            .select("post_id")
+            .eq("reporter_id", userId)
+            .in("post_id", displayedPostIds);
+
+          if (reportError) {
+            console.error("신고 내역 불러오기 실패 : ", reportError);
+          } else {
+            const databaseReports = (reportData ?? []) as DatabaseReport[];
+
+            databaseReports.forEach((report) => {
+              reportedPostIdSet.add(report.post_id);
+            });
+          }
+        }
+
         setHasMorePosts(hasMore);
 
         const convertedPosts: Post[] = displayedDatabasePosts.map((post) => {
@@ -257,6 +286,7 @@ export default function Home() {
             isEmpathized,
             isCheered,
             isSmiled,
+            isReported: reportedPostIdSet.has(post.id),
             createdAt: post.created_at,
           };
         });
@@ -630,6 +660,7 @@ export default function Home() {
         isEmpathized: false,
         isCheered: false,
         isSmiled: false,
+        isReported: false,
         createdAt: databasePost.created_at,
       };
 
@@ -748,6 +779,56 @@ export default function Home() {
       pendingReactionsKeysRef.current.delete(reactionKey);
       setPendingReactionKeys(new Set(pendingReactionsKeysRef.current));
     }
+  };
+
+  const handleReport = async (
+    postId: number,
+    reportReason: ReportReason,
+  ): Promise<boolean> => {
+    if (!userId) {
+      return false;
+    }
+
+    const supabase = createClient();
+
+    const { error } = await supabase.from("reports").insert({
+      post_id: postId,
+      reporter_id: userId,
+      reason: reportReason,
+    });
+
+    if (error) {
+      if (error.code === "23505") {
+        setPosts((previousPosts) =>
+          previousPosts.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  isReported: true,
+                }
+              : post,
+          ),
+        );
+
+        return true;
+      }
+
+      console.error("게시글 신고 실패:", error);
+      return false;
+    }
+
+    setPosts((previousPosts) =>
+      previousPosts.map((post) =>
+        post.id === postId
+          ? {
+              ...post,
+              isReported: true,
+            }
+          : post,
+      ),
+    );
+
+    return true;
   };
 
   const handleDelete = async (postId: number) => {
@@ -1317,6 +1398,12 @@ export default function Home() {
                   isCheered={post.isCheered}
                   isSmiled={post.isSmiled}
                   canManage={userId !== null && post.userId === userId}
+                  canReport={
+                    userId !== null &&
+                    post.userId !== null &&
+                    post.userId !== userId
+                  }
+                  isReported = {post.isReported}
                   isDeleting={deletingPostId === post.id}
                   isEmpathyPending={pendingReactionsKeys.has(
                     createReactionKey(post.id, "empathy"),
@@ -1333,6 +1420,9 @@ export default function Home() {
                   onDeleteClick={() => handleDelete(post.id)}
                   onUpdate={(updatedContent) =>
                     handleUpdate(post.id, updatedContent)
+                  }
+                  onReport={(reportReason) =>
+                    handleReport(post.id, reportReason)
                   }
                 />
               ))
