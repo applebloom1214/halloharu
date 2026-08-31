@@ -3,6 +3,7 @@
 import Header from "@/components/Header";
 import RecordForm from "@/components/RecordForm";
 import RecordStats from "@/components/RecordStats";
+import SelectedRecordCard from "@/components/SelectedRecordCard";
 import Link from "next/link";
 
 import { useEffect, useRef, useState } from "react";
@@ -1123,23 +1124,12 @@ export default function Home() {
             )}
 
             {selectedRecordDate !== null && (
-              <section className="mx-auto mt-3 w-full max-w-sm rounded-xl border border-gray-200 bg-white p-4">
-                <p className="mb-2 text-sm font-semibold text-gray-700">
-                  {selectedRecordDate}의 기록
-                </p>
-
-                {isSelectedRecordLoading ? (
-                  <p className="text-sm text-gray-400">기록을 불러오는 중...</p>
-                ) : selectedRecordError ? (
-                  <p role="alert" className="text-sm text-red-500">
-                    {selectedRecordError}
-                  </p>
-                ) : selectedRecordContent !== null ? (
-                  <p className="whitespace-pre-wrap break-words text-sm text-gray=700">
-                    {selectedRecordContent}
-                  </p>
-                ) : null}
-              </section>
+              <SelectedRecordCard
+                selectedDate={selectedRecordDate}
+                content={selectedRecordContent}
+                isLoading={isSelectedRecordLoading}
+                errorMessage={selectedRecordError}
+              />
             )}
 
             <RecordForm
