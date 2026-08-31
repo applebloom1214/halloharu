@@ -1,5 +1,7 @@
 "use client";
-import Image from "next/image";
+
+import Header from "@/components/Header";
+import RecordForm from "@/components/RecordForm";
 import Link from "next/link";
 
 import { useEffect, useRef, useState } from "react";
@@ -52,7 +54,6 @@ type DatabaseReaction = {
   reaction_type: ReactionType;
 };
 
-const MAX_CONTENT_LENGTH = 300;
 const POSTS_PER_PAGE = 10;
 
 const getTodayInKorea = () =>
@@ -962,69 +963,14 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] text-[#333333]">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-3 border-b bg-white px-4 py-4 sm:flex-nowrap sm:px-6">
-        <Image
-          src="/halloharu-logo.png"
-          alt="할로하루 로고"
-          height={40}
-          width={200}
-          className="mr-auto h-11 w-auto"
-        />
-
-        <Link
-          href="/humor"
-          className="whitespace-nowrap text-sm text-gray-500 transition hover:text-emerald-500"
-        >
-          유머 공간
-        </Link>
-
-        <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-          {isAuthLoading ? (
-            <span className="text-sm text-gray-400">확인 중...</span>
-          ) : userEmail ? (
-            <>
-              <Link
-                href="/profile"
-                title="프로필 설정"
-                className="min-w-0 truncate text-sm text-gray-500 transition hover:text-emerald-500 sm:max-w-48"
-              >
-                {isProfileLoading
-                  ? "프로필 확인 중..."
-                  : (userNickname ?? userEmail)}
-              </Link>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                disabled={isSigningOut}
-                className={`shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-sm transition ${
-                  isSigningOut
-                    ? "cursor-not-allowed text-gray-300"
-                    : "text-gray-600 hover:border-red-300 hover:text-red-500"
-                }`}
-              >
-                {isSigningOut ? "로그아웃 중..." : "로그아웃"}
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="whitespace-nowrap rounded-full border px-4 py-2 text-sm"
-              >
-                로그인
-              </Link>
-
-              <Link
-                href="/signup"
-                className="whitespace-nowrap rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-white"
-              >
-                회원가입
-              </Link>
-            </>
-          )}
-        </div>
-      </header>
+      <Header
+        isAuthLoading={isAuthLoading}
+        userEmail={userEmail}
+        isProfileLoading={isProfileLoading}
+        userNickname={userNickname}
+        isSigningOut={isSigningOut}
+        onLogout={handleLogout}
+      />
 
       <section className="mx-auto max-w-2xl px-6 py-16 text-center">
         <h2 className="text-3xl font-bold">오늘 하루, 가볍게 남겨보세요.</h2>
@@ -1229,75 +1175,18 @@ export default function Home() {
               </section>
             )}
 
-            <textarea
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              maxLength={MAX_CONTENT_LENGTH}
-              disabled={isPostCreationUnavailable}
-              className={`h-32 w-full resize-none rounded-xl border p-4 outline-none ${
-                isPostCreationUnavailable
-                  ? "cursor-not-allowed bg-gray-50 text-gray-400"
-                  : "focus:border-emerald-400"
-              }`}
-              placeholder={
-                isProfileLoading
-                  ? "프로필을 확인하고 있습니다..."
-                  : userNickname === null
-                    ? "닉네임을 먼저 설정해 주세요."
-                    : isDailyPostStatusLoading
-                      ? "오늘 기록을 확인하고 있습니다..."
-                      : hasPostedToday
-                        ? "오늘의 기록을 이미 남겼습니다."
-                        : "오늘은 어떤 하루였나요? ^^"
-              }
+            <RecordForm
+              content={content}
+              isPostCreationUnavailable={isPostCreationUnavailable}
+              isProfileLoading={isProfileLoading}
+              userNickname={userNickname}
+              isDailyPostStatusLoading={isDailyPostStatusLoading}
+              hasPostedToday={hasPostedToday}
+              submitErrorMessage={submitErrorMessage}
+              isSubmitting={isSubmitting}
+              onContentChange={setContent}
+              onSubmit={handleSubmit}
             />
-
-            {hasPostedToday && (
-              <p className="mt-2 text-left text-sm text-emerald-600">
-                오늘의 기록을 완료했습니다. 내일 다시 만나요.
-              </p>
-            )}
-
-            {submitErrorMessage && (
-              <p role="alert" className="mt-2 text-left text-sm text-red-500">
-                {submitErrorMessage}
-              </p>
-            )}
-
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-sm text-gray-400">
-                {content.length} / {MAX_CONTENT_LENGTH}
-              </span>
-
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={
-                  content.trim() === "" ||
-                  isSubmitting ||
-                  isPostCreationUnavailable
-                }
-                className={`rounded-full px-5 py-2 font-semibold text-white transition ${
-                  content.trim() === "" ||
-                  isSubmitting ||
-                  isPostCreationUnavailable
-                    ? "cursor-not-allowed bg-gray-300"
-                    : "bg-emerald-400 hover:bg-emerald-500"
-                }`}
-              >
-                {isProfileLoading
-                  ? "프로필 확인 중..."
-                  : userNickname === null
-                    ? "닉네임 설정 필요"
-                    : isDailyPostStatusLoading
-                      ? "확인 중..."
-                      : hasPostedToday
-                        ? "오늘 기록 완료"
-                        : isSubmitting
-                          ? "저장 중..."
-                          : "하루 남기기"}
-              </button>
-            </div>
           </div>
         ) : (
           <div className="mt-10 rounded-2xl border bg-white p-8 shadow-sm">
@@ -1403,7 +1292,7 @@ export default function Home() {
                     post.userId !== null &&
                     post.userId !== userId
                   }
-                  isReported = {post.isReported}
+                  isReported={post.isReported}
                   isDeleting={deletingPostId === post.id}
                   isEmpathyPending={pendingReactionsKeys.has(
                     createReactionKey(post.id, "empathy"),
