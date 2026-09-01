@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import RecordForm from "@/components/RecordForm";
 import RecordStats from "@/components/RecordStats";
 import SelectedRecordCard from "@/components/SelectedRecordCard";
+import PostFilterButtons from "@/components/PostFilterButtons";
 import Link from "next/link";
 
 import { useEffect, useRef, useState } from "react";
@@ -1164,37 +1165,13 @@ export default function Home() {
             <h3 className="mb-4 text-lg font-semibold">최근 올라온 하루</h3>
 
             {userId && (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPostFilter("all");
-                    setPostsLimit(POSTS_PER_PAGE);
-                  }}
-                  className={`rounded-full px-3 py-1 text-sm transition ${
-                    postFilter === "all"
-                      ? "bg-emerald-400 text-white"
-                      : "border bg-white text-gray-500 hover:bg-gray-50"
-                  }`}
-                >
-                  전체 기록
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPostFilter("mine");
-                    setPostsLimit(POSTS_PER_PAGE);
-                  }}
-                  className={`rounded-full px-3 py-1 text-sm transition ${
-                    postFilter === "mine"
-                      ? "bg-emerald-400 text-white"
-                      : "border bg-white text-gray-500 hover:bg-gray-50"
-                  }`}
-                >
-                  내 기록
-                </button>
-              </div>
+              <PostFilterButtons
+                selectedFilter={postFilter}
+                onFilterChange={(filter) => {
+                  setPostFilter(filter);
+                  setPostsLimit(POSTS_PER_PAGE);
+                }}
+              />
             )}
           </div>
 
