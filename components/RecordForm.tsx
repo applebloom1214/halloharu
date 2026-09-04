@@ -2,6 +2,9 @@ const MAX_CONTENT_LENGTH = 300;
 
 type RecordFormProps = {
   content: string;
+  onContentChange: (content: string) => void;
+  commentsEnabled : boolean;
+  onCommentsEnabledChange : (enabled : boolean) => void;
   isPostCreationUnavailable: boolean;
   isProfileLoading: boolean;
   userNickname: string | null;
@@ -9,12 +12,14 @@ type RecordFormProps = {
   hasPostedToday: boolean;
   submitErrorMessage: string | null;
   isSubmitting: boolean;
-  onContentChange: (content: string) => void;
   onSubmit: () => void;
 };
 
 export default function RecordForm({
   content,
+  commentsEnabled,
+  onContentChange,
+  onCommentsEnabledChange,
   isPostCreationUnavailable,
   isProfileLoading,
   userNickname,
@@ -22,7 +27,6 @@ export default function RecordForm({
   hasPostedToday,
   submitErrorMessage,
   isSubmitting,
-  onContentChange,
   onSubmit,
 }: RecordFormProps) {
   const isSubmitDisabled =
@@ -52,6 +56,29 @@ export default function RecordForm({
                   : "오늘은 어떤 하루였나요? ^^"
         }
       />
+
+      <label
+        className={`mt-3 flex items-start gap-2 text-left text-sm ${
+          isPostCreationUnavailable ? "text-gray-300" : "text-gray-600"
+        }`}
+      >
+        <input
+          type="checkbox"
+          checked={commentsEnabled}
+          onChange={(event) =>
+            onCommentsEnabledChange(event.target.checked)
+          }
+          disabled={isPostCreationUnavailable}
+          className="mt-0.5 h-4 w-4 accent-emerald-500"
+        />
+
+        <span>
+          <span className="font-medium">댓글 받기</span>
+          <span className="mt-1 block text-xs text-gray-400">
+            다른 사용자가 이 기록에 댓글을 남길 수 있습니다.
+          </span>
+        </span>
+      </label>
 
       {hasPostedToday && (
         <p className="mt-2 text-left text-sm text-emerald-600">

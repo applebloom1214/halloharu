@@ -5,8 +5,10 @@ export type ReportReason = "sapm" | "harassment" | "inappropriate" | "other";
 
 type PostCardProps = {
   authorUserId: string | null;
+  postId : number;
   authorNickname: string | null;
   content: string;
+  commentsEnabled : boolean;
   createdAt: string;
   empathyCount: number;
   cheerCount: number;
@@ -24,6 +26,7 @@ type PostCardProps = {
   isCheerPending: boolean;
   isSmilePending: boolean;
 
+
   onEmpathyClick: () => void;
   onCheerClick: () => void;
   onSmileClick: () => void;
@@ -34,8 +37,10 @@ type PostCardProps = {
 
 export default function PostCard({
   authorUserId,
+  postId,
   authorNickname,
   content,
+  commentsEnabled,
   createdAt,
   empathyCount,
   cheerCount,
@@ -345,6 +350,15 @@ export default function PostCard({
           😊 미소 {smileCount}
         </button>
       </div>
+
+      {!isEditing && commentsEnabled && (
+        <Link
+          href={`/posts/${postId}`}
+          className="mt-3 inline-block text-sm font-medium text-emerald-600 transition hover:text-emerald-700"
+        >
+          댓글 보기 →
+        </Link>
+      )}
     </div>
   );
 }

@@ -18,6 +18,7 @@ type Post = {
   userId: string | null;
   authorNickname: string | null;
   content: string;
+  commentsEnabled : boolean;
   empathyCount: number;
   cheerCount: number;
   smileCount: number;
@@ -37,6 +38,7 @@ type DatabasePost = {
   id: number;
   user_id: string | null;
   content: string;
+  comments_enabled : boolean,
   created_at: string;
   reactions?: DatabaseReaction[];
 };
@@ -69,6 +71,7 @@ const getTodayInKorea = () =>
 
 export default function Home() {
   const [content, setContent] = useState("");
+  const [commentsEnabled, setCommentsEnabled] = useState(false);
   const [posts, setPosts] = useState<Post[]>([]);
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [hasMorePosts, setHasMorePosts] = useState(false);
@@ -124,6 +127,7 @@ export default function Home() {
     isDailyPostStatusLoading ||
     hasPostedToday;
 
+  // 글 불러오기  
   useEffect(() => {
     if (isAuthLoading) {
       return;
@@ -150,6 +154,7 @@ export default function Home() {
             id,
             user_id,
             content,
+            comments_enabled,
             created_at,
             reactions(
               user_id,
@@ -284,6 +289,7 @@ export default function Home() {
                 ? (authorNicknameById.get(post.user_id) ?? null)
                 : null,
             content: post.content,
+            commentsEnabled : post.comments_enabled,
             empathyCount,
             cheerCount,
             smileCount,
@@ -621,12 +627,14 @@ export default function Home() {
         .insert({
           content: trimmedContent,
           user_id: userId,
+          comments_enabled : commentsEnabled,
         })
         .select(
           `
           id,
           user_id,
           content,
+          comments_enabled,
           created_at
         `,
         )
@@ -658,6 +666,7 @@ export default function Home() {
         userId: databasePost.user_id,
         authorNickname: userNickname,
         content: databasePost.content,
+        commentsEnabled : databasePost.comments_enabled,
         empathyCount: 0,
         cheerCount: 0,
         smileCount: 0,
@@ -670,6 +679,7 @@ export default function Home() {
 
       setPosts((previousPosts) => [newPost, ...previousPosts]);
       setContent("");
+      setCommentsEnabled(false);
       setHasPostedToday(true);
 
       const todayInKorea = getTodayInKorea();
@@ -1135,6 +1145,8 @@ export default function Home() {
 
             <RecordForm
               content={content}
+              commentsEnabled={commentsEnabled}
+              onCommentsEnabledChange={setCommentsEnabled}
               isPostCreationUnavailable={isPostCreationUnavailable}
               isProfileLoading={isProfileLoading}
               userNickname={userNickname}
@@ -1210,9 +1222,11 @@ export default function Home() {
               posts.map((post) => (
                 <PostCard
                   key={post.id}
+                  postId={post.id}
                   authorUserId={post.userId}
                   authorNickname={post.authorNickname}
                   content={post.content}
+                  commentsEnabled={post.commentsEnabled}
                   createdAt={post.createdAt}
                   empathyCount={post.empathyCount}
                   cheerCount={post.cheerCount}
