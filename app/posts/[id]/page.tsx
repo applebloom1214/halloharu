@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import CommentForm from "@/components/CommentForm";
 import CommentDeleteButton from "@/components/CommentDeleteButton";
+import CommentEditForm from "@/components/CommentEditForm";
 
 type PostDetailPageProps = {
   params: Promise<{
@@ -17,23 +18,20 @@ type CommentAuthor = {
 };
 
 type CommentWithAuthor = {
-  id : number;
-  user_id : string;
-  content : string;
-  created_at : string;
-  author : CommentAuthor | CommentAuthor[] | null;
+  id: number;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author: CommentAuthor | CommentAuthor[] | null;
 };
 
-const getCommentAuthorNickname = (
-  author: CommentWithAuthor["author"],
-) => {
+const getCommentAuthorNickname = (author: CommentWithAuthor["author"]) => {
   if (Array.isArray(author)) {
     return author[0]?.nickname ?? "알 수 없는 사용자";
   }
 
   return author?.nickname ?? "알 수 없는 사용자";
 };
-
 
 export default async function PostDetailPage({ params }: PostDetailPageProps) {
   const { id } = await params;
@@ -180,9 +178,16 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
                     </div>
                   </div>
 
-                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">
-                    {comment.content}
-                  </p>
+                  {currentUserId === comment.user_id ? (
+                    <CommentEditForm
+                      commentId={comment.id}
+                      initialContent={comment.content}
+                    />
+                  ) : (
+                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">
+                      {comment.content}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>
