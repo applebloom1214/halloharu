@@ -29,6 +29,13 @@ export default function Header({
       />
 
       <Link
+        href="/search"
+        className="whitespace-nowrap text-sm text-gray-500 transition hover:text-emerald-500"
+      >
+        검색
+      </Link>
+
+      <Link
         href="/humor"
         className="whitespace-nowrap text-sm text-gray-500 transition hover:text-emerald-500"
       >
