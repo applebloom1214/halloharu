@@ -5,10 +5,10 @@ export type ReportReason = "sapm" | "harassment" | "inappropriate" | "other";
 
 type PostCardProps = {
   authorUserId: string | null;
-  postId : number;
+  postId: number;
   authorNickname: string | null;
   content: string;
-  commentsEnabled : boolean;
+  commentsEnabled: boolean;
   createdAt: string;
   empathyCount: number;
   cheerCount: number;
@@ -19,13 +19,12 @@ type PostCardProps = {
   // true - 이 게시글을 수정,삭제할 수 있음 false - 수정,삭제할 수 없음
   canManage: boolean;
   canReport: boolean;
-  isReported : boolean;
+  isReported: boolean;
   isDeleting: boolean;
 
   isEmpathyPending: boolean;
   isCheerPending: boolean;
   isSmilePending: boolean;
-
 
   onEmpathyClick: () => void;
   onCheerClick: () => void;
@@ -351,12 +350,12 @@ export default function PostCard({
         </button>
       </div>
 
-      {!isEditing && commentsEnabled && (
+      {!isEditing && (
         <Link
           href={`/posts/${postId}`}
           className="mt-3 inline-block text-sm font-medium text-emerald-600 transition hover:text-emerald-700"
         >
-          댓글 보기 →
+          {commentsEnabled ? "댓글 보기 →" : "상세 보기 →"}
         </Link>
       )}
     </div>

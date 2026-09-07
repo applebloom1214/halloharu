@@ -40,19 +40,21 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   const rangeStart = (currentPage - 1) * SEARCH_RESULTS_PER_PAGE;
 
-  const rangeEnd = rangeStart + SEARCH_RESULTS_PER_PAGE;
+  const rangeEnd = rangeStart + SEARCH_RESULTS_PER_PAGE - 1;
 
   let searchResults: SearchPost[] = [];
+  let totalSearchResultCount = 0;
   let hasSearchError = false;
   let hasNextPage = false;
+
   const authorNicknameById = new Map<string, string>();
 
   if (keyword !== "") {
     const supabase = await createClient();
 
-    const { data, error } = await supabase
+    const { data, error, count } = await supabase
       .from("posts")
-      .select("id, user_id, content, created_at")
+      .select("id, user_id, content, created_at", { count: "exact" })
       .ilike("content", `%${escapedKeyword}%`)
       .order("created_at", { ascending: false })
       .range(rangeStart, rangeEnd);
@@ -61,11 +63,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       console.error("기록 검색 실패:", error);
       hasSearchError = true;
     } else {
-      const databasePosts = (data ?? []) as SearchPost[];
+      searchResults = (data ?? []) as SearchPost[];
+      totalSearchResultCount = count ?? 0;
 
-      hasNextPage = databasePosts.length > SEARCH_RESULTS_PER_PAGE;
-
-      searchResults = databasePosts.slice(0, SEARCH_RESULTS_PER_PAGE);
+      hasNextPage =
+        currentPage * SEARCH_RESULTS_PER_PAGE < totalSearchResultCount;
 
       const authorIds = [
         ...new Set(
@@ -166,14 +168,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         ) : (
           <section className="mt-6">
             <h2 className="text-sm font-semibold text-gray-600">
-              “{keyword}” 검색 결과 {searchResults.length}개
+              “{keyword}” 검색 결과 총 {totalSearchResultCount}개
             </h2>
 
             <ul className="mt-3 space-y-3">
               {searchResults.map((post) => (
                 <li key={post.id}>
                   <Link
-                    href={`/posts/${post.id}`}
+                    href={`/posts/${post.id}?q=${encodeURIComponent(
+                      keyword,
+                    )}&page=${currentPage}`}
                     className="block rounded-2xl border bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
                   >
                     <div className="flex items-center justify-between gap-3">

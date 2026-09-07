@@ -11,6 +11,11 @@ type PostDetailPageProps = {
   params: Promise<{
     id: string;
   }>;
+
+  searchParams: Promise<{
+    q?: string | string[];
+    page?: string | string[];
+  }>;
 };
 
 type CommentAuthor = {
@@ -33,9 +38,29 @@ const getCommentAuthorNickname = (author: CommentWithAuthor["author"]) => {
   return author?.nickname ?? "알 수 없는 사용자";
 };
 
-export default async function PostDetailPage({ params }: PostDetailPageProps) {
+export default async function PostDetailPage({
+  params,
+  searchParams,
+}: PostDetailPageProps) {
   const { id } = await params;
+  const { q, page } = await searchParams;
+
   const postId = Number(id);
+
+  const searchKeyword = typeof q === "string" ? q.trim().slice(0, 50) : "";
+
+  const requestedSearchPage = typeof page === "string" ? Number(page) : 1;
+
+  const searchPage =
+    Number.isInteger(requestedSearchPage) && requestedSearchPage > 0
+      ? requestedSearchPage
+      : 1;
+
+  const cameFromSearch = searchKeyword !== "";
+
+  const backHref = cameFromSearch
+    ? `/search?q=${encodeURIComponent(searchKeyword)}&page=${searchPage}`
+    : "/";
 
   if (!Number.isInteger(postId) || postId <= 0) {
     notFound();
@@ -117,10 +142,10 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     <main className="min-h-screen bg-[#FAFAFA] px-6 py-12 text-[#333333]">
       <section className="mx-auto max-w-2xl">
         <Link
-          href="/"
+          href={backHref}
           className="text-sm text-gray-500 transition hover:text-emerald-600"
         >
-          ← 기록 목록으로
+          {cameFromSearch ? "← 검색 결과로" : "← 기록 목록으로"}
         </Link>
 
         <article className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
