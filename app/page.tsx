@@ -18,7 +18,7 @@ type Post = {
   userId: string | null;
   authorNickname: string | null;
   content: string;
-  commentsEnabled : boolean;
+  commentsEnabled: boolean;
   empathyCount: number;
   cheerCount: number;
   smileCount: number;
@@ -38,7 +38,7 @@ type DatabasePost = {
   id: number;
   user_id: string | null;
   content: string;
-  comments_enabled : boolean,
+  comments_enabled: boolean;
   created_at: string;
   reactions?: DatabaseReaction[];
 };
@@ -127,7 +127,7 @@ export default function Home() {
     isDailyPostStatusLoading ||
     hasPostedToday;
 
-  // 글 불러오기  
+  // 글 불러오기
   useEffect(() => {
     if (isAuthLoading) {
       return;
@@ -289,7 +289,7 @@ export default function Home() {
                 ? (authorNicknameById.get(post.user_id) ?? null)
                 : null,
             content: post.content,
-            commentsEnabled : post.comments_enabled,
+            commentsEnabled: post.comments_enabled,
             empathyCount,
             cheerCount,
             smileCount,
@@ -373,31 +373,33 @@ export default function Home() {
 
         const todayInKorea = getTodayInKorea();
 
-        const { data, error } = await supabase
-          .from("posts")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("daily_post_date", todayInKorea)
-          .limit(1)
-          .maybeSingle();
+        const [
+          { data: todayPost, error: todayPostError },
+          { data: streak, error: streakError },
+        ] = await Promise.all([
+          supabase
+            .from("posts")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("daily_post_date", todayInKorea)
+            .limit(1)
+            .maybeSingle(),
 
-        if (error) {
-          console.error("오늘 기록 확인 실패 : ", error);
+          supabase.rpc("get_current_streak"),
+        ]);
+
+        if (todayPostError) {
+          console.error("오늘 기록 확인 실패:", todayPostError);
           setHasPostedToday(false);
-          return;
+        } else {
+          setHasPostedToday(todayPost !== null);
         }
 
-        setHasPostedToday(data !== null);
-
-        const { data: streak, error: sterakError } =
-          await supabase.rpc("get_current_streak");
-
-        if (sterakError) {
-          console.error("연속 기록 확인 실패:", sterakError);
-          return;
+        if (streakError) {
+          console.error("연속 기록 확인 실패:", streakError);
+        } else {
+          setCurrentStreak(streak ?? 0);
         }
-
-        setCurrentStreak(streak ?? 0);
       } finally {
         setIsDailyPostStatusLoading(false);
       }
@@ -627,7 +629,7 @@ export default function Home() {
         .insert({
           content: trimmedContent,
           user_id: userId,
-          comments_enabled : commentsEnabled,
+          comments_enabled: commentsEnabled,
         })
         .select(
           `
@@ -666,7 +668,7 @@ export default function Home() {
         userId: databasePost.user_id,
         authorNickname: userNickname,
         content: databasePost.content,
-        commentsEnabled : databasePost.comments_enabled,
+        commentsEnabled: databasePost.comments_enabled,
         empathyCount: 0,
         cheerCount: 0,
         smileCount: 0,

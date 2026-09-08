@@ -28,17 +28,18 @@ export default async function UserPage({ params }: UserPageProps) {
 
   const supabase = await createClient();
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("nickname")
-    .eq("id", userId)
-    .maybeSingle();
+  const [
+    { data: profile, error: profileError },
+    { data: posts, error: postsError },
+  ] = await Promise.all([
+    supabase.from("profiles").select("nickname").eq("id", userId).maybeSingle(),
 
-  const { data: posts, error: postsError } = await supabase
-    .from("posts")
-    .select("id, content, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    supabase
+      .from("posts")
+      .select("id, content, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+  ]);
 
   const AuthorPosts = (posts ?? []) as AuthorPost[];
 
@@ -63,7 +64,7 @@ export default async function UserPage({ params }: UserPageProps) {
             </h1>
 
             <p className="mt-2 text-sm text-emerald-700">
-                총 {AuthorPosts.length}개의 하루를 남겼어요.
+              총 {AuthorPosts.length}개의 하루를 남겼어요.
             </p>
           </header>
 

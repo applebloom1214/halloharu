@@ -95,9 +95,11 @@ export default async function PostDetailPage({
     notFound();
   }
 
-  let authorNickname = "알 수 없는 사용자";
+  const fetchAuthorNickname = async () => {
+    if (post.user_id === null) {
+      return "알 수 없는 사용자";
+    }
 
-  if (post.user_id !== null) {
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("nickname")
@@ -106,15 +108,20 @@ export default async function PostDetailPage({
 
     if (profileError) {
       console.error("게시글 작성자 조회 실패:", profileError);
-    } else if (profile !== null) {
-      authorNickname = profile.nickname;
+      return "알 수 없는 사용자";
     }
-  }
 
-  const { data: comments, error: commentsError } = await supabase
-    .from("comments")
-    .select(
-      `
+    return profile?.nickname ?? "알 수 없는 사용자";
+  };
+
+  const [authorNickname, { data: comments, error: commentsError }] =
+    await Promise.all([
+      fetchAuthorNickname(),
+
+      supabase
+        .from("comments")
+        .select(
+          `
         id,
         user_id,
         content,
@@ -123,9 +130,10 @@ export default async function PostDetailPage({
           nickname
         )
       `,
-    )
-    .eq("post_id", postId)
-    .order("created_at", { ascending: true });
+        )
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true }),
+    ]);
 
   if (commentsError) {
     console.error("댓글 목록 조회 실패 : ", commentsError);
