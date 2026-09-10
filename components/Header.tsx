@@ -6,6 +6,7 @@ type HeaderProps = {
   userEmail: string | null;
   isProfileLoading: boolean;
   userNickname: string | null;
+  isAdmin: boolean;
   isSigningOut: boolean;
   onLogout: () => void;
 };
@@ -15,6 +16,7 @@ export default function Header({
   userEmail,
   isProfileLoading,
   userNickname,
+  isAdmin,
   isSigningOut,
   onLogout,
 }: HeaderProps) {
@@ -47,6 +49,14 @@ export default function Header({
           <span className="text-sm text-gray-400">확인 중...</span>
         ) : userEmail ? (
           <>
+            {isAdmin && (
+              <Link
+                href="/admin/reports"
+                className="shrink-0 whitespace-nowrap text-sm font-semibold text-red-500 transition hover:text-red-600"
+              >
+                신고 관리
+              </Link>
+            )}
             <Link
               href="/profile"
               title="프로필 설정"

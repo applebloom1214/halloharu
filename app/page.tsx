@@ -105,6 +105,7 @@ export default function Home() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [userNickname, setUserNickname] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [nicknameInput, setNicknameInput] = useState("");
   const [isNicknameSaving, setIsNicknameSaving] = useState(false);
@@ -338,18 +339,35 @@ export default function Home() {
       try {
         const supabase = createClient();
 
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("nickname")
-          .eq("id", userId)
-          .maybeSingle();
+        const [
+          { data: profileData, error: profileError },
+          { data: adminData, error: adminError },
+        ] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("nickname")
+            .eq("id", userId)
+            .maybeSingle(),
 
-        if (error) {
-          console.error("프로필 불러오기 실패", error);
-          return;
+          supabase
+            .from("admins")
+            .select("user_id")
+            .eq("user_id", userId)
+            .maybeSingle(),
+        ]);
+
+        if (profileError) {
+          console.error("프로필 불러오기 실패:", profileError);
+        } else {
+          setUserNickname(profileData?.nickname ?? null);
         }
 
-        setUserNickname(data?.nickname ?? null);
+        if (adminError) {
+          console.error("관리자 권한 확인 실패:", adminError);
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(adminData !== null);
+        }
       } finally {
         setIsProfileLoading(false);
       }
@@ -983,6 +1001,7 @@ export default function Home() {
         userEmail={userEmail}
         isProfileLoading={isProfileLoading}
         userNickname={userNickname}
+        isAdmin = {isAdmin}
         isSigningOut={isSigningOut}
         onLogout={handleLogout}
       />
