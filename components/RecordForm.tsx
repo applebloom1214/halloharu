@@ -1,10 +1,21 @@
+"use client";
+
+import Image from "next/image";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
+
 const MAX_CONTENT_LENGTH = 300;
+
+const MAX_IMAGE_FILE_SIZE = 5 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 type RecordFormProps = {
   content: string;
+  selectedImageFile: File | null;
+  onImageFileChange: (file: File | null) => void;
   onContentChange: (content: string) => void;
-  commentsEnabled : boolean;
-  onCommentsEnabledChange : (enabled : boolean) => void;
+  commentsEnabled: boolean;
+  onCommentsEnabledChange: (enabled: boolean) => void;
   isPostCreationUnavailable: boolean;
   isProfileLoading: boolean;
   userNickname: string | null;
@@ -17,6 +28,8 @@ type RecordFormProps = {
 
 export default function RecordForm({
   content,
+  selectedImageFile,
+  onImageFileChange,
   commentsEnabled,
   onContentChange,
   onCommentsEnabledChange,
@@ -29,6 +42,80 @@ export default function RecordForm({
   isSubmitting,
   onSubmit,
 }: RecordFormProps) {
+  const [imageErrorMessage, setImageErrorMessage] = useState<string | null>(
+    null,
+  );
+
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  //선택한 사진을 브라우저에서 볼 수 있는 임시 주소로 변환합니다
+  useEffect(() => {
+    if (selectedImageFile === null) {
+      return;
+    }
+
+    const fileReader = new FileReader();
+
+    fileReader.onload = () => {
+      if (typeof fileReader.result === "string") {
+        setImagePreviewUrl(fileReader.result);
+      }
+    };
+
+    fileReader.readAsDataURL(selectedImageFile);
+
+    return () => {
+      fileReader.abort();
+    };
+  }, [selectedImageFile]);
+
+  //사진 선택을 취소하거나 나중에 게시글 저장이 끝났을 때 파일 입력창을 비웁니다.
+  useEffect(() => {
+    if (selectedImageFile === null && imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  }, [selectedImageFile]);
+
+  const handleImageFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0] ?? null;
+
+    setImageErrorMessage(null);
+    setImagePreviewUrl(null);
+
+    if (file === null) {
+      onImageFileChange(null);
+      return;
+    }
+
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      onImageFileChange(null);
+      setImageErrorMessage("JPEG, PNG, Webp 형식의 사진만 첨부할 수 있습니다.");
+      event.currentTarget.value = "";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_FILE_SIZE) {
+      onImageFileChange(null);
+      setImageErrorMessage("사진은 5MB 이하만 첨부할 수 있습니다.");
+      event.currentTarget.value = "";
+      return;
+    }
+
+    onImageFileChange(file);
+  };
+
+  const handleImageRemove = () => {
+    setImageErrorMessage(null);
+    setImagePreviewUrl(null);
+    onImageFileChange(null);
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
   const isSubmitDisabled =
     content.trim() === "" || isSubmitting || isPostCreationUnavailable;
 
@@ -57,6 +144,63 @@ export default function RecordForm({
         }
       />
 
+      <div className="mt-3 text-left">
+        <label
+          htmlFor="post-image"
+          className={`block text-sm font-medium ${
+            isPostCreationUnavailable ? "text-gray-300" : "text-gray-600"
+          }`}
+        >
+          사진 1장 첨부
+        </label>
+
+        <input
+          ref={imageInputRef}
+          id="post-image"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={isPostCreationUnavailable}
+          onChange={handleImageFileChange}
+          className="mt-2 block w-full text-sm text-gray-500 file:mr-3 file:rounded-full file:border-0 file:bg-emerald-50 file:px-4 file:py-2 file:font-medium file:text-emerald-700 hover:file:bg-emerald-100 disabled:cursor-not-allowed"
+        />
+
+        {selectedImageFile && imagePreviewUrl && (
+          <div className="mt-3 rounded-xl border bg-gray-50 p-3">
+            <div className="relative h-64 overflow-hidden rounded-lg bg-white">
+              <Image
+                src={imagePreviewUrl}
+                alt="선택한 게시글 사진 미리보기"
+                fill
+                unoptimized
+                sizes="(max-width: 672px) 100vw, 672px"
+                className="object-contain"
+              />
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-xs text-gray-500">
+                {selectedImageFile.name}
+              </p>
+
+              <button
+                type="button"
+                onClick={handleImageRemove}
+                disabled={isPostCreationUnavailable}
+                className="shrink-0 text-sm text-gray-400 transition hover:text-red-500 disabled:cursor-not-allowed"
+              >
+                선택 취소
+              </button>
+            </div>
+          </div>
+        )}
+
+        {imageErrorMessage && (
+          <p role="alert" className="mt-2 text-sm text-red-500">
+            {imageErrorMessage}
+          </p>
+        )}
+      </div>
+
       <label
         className={`mt-3 flex items-start gap-2 text-left text-sm ${
           isPostCreationUnavailable ? "text-gray-300" : "text-gray-600"
@@ -65,9 +209,7 @@ export default function RecordForm({
         <input
           type="checkbox"
           checked={commentsEnabled}
-          onChange={(event) =>
-            onCommentsEnabledChange(event.target.checked)
-          }
+          onChange={(event) => onCommentsEnabledChange(event.target.checked)}
           disabled={isPostCreationUnavailable}
           className="mt-0.5 h-4 w-4 accent-emerald-500"
         />

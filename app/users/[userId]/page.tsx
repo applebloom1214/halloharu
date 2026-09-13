@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,6 +11,7 @@ type UserPageProps = {
 type AuthorPost = {
   id: number;
   content: string;
+  image_path : string | null;
   created_at: string;
 };
 
@@ -36,7 +38,7 @@ export default async function UserPage({ params }: UserPageProps) {
 
     supabase
       .from("posts")
-      .select("id, content, created_at")
+      .select("id, content, image_path, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
   ]);
@@ -87,6 +89,23 @@ export default async function UserPage({ params }: UserPageProps) {
                     <p className="whitespace-pre-wrap break-words text-gray-700">
                       {post.content}
                     </p>
+
+                    {post.image_path && (
+                      <div className="relative mt-4 h-72 overflow-hidden rounded-xl bg-gray-50 sm:h-95">
+                        <Image
+                          src={
+                            supabase.storage
+                              .from("post-images")
+                              .getPublicUrl(post.image_path).data.publicUrl 
+                          }
+                          alt="게시글 첨부 사진"
+                          fill
+                          unoptimized
+                          sizes="(max-width:670px) 100vw, 672px"
+                          className="object-contain"
+                        />
+                      </div>
+                    )}
 
                     <time
                       dateTime={post.created_at}

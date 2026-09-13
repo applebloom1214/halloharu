@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -79,6 +80,7 @@ export default async function PostDetailPage({
         id,
         user_id,
         content,
+        image_path,
         comments_enabled,
         created_at
       `,
@@ -94,6 +96,11 @@ export default async function PostDetailPage({
   if (post === null) {
     notFound();
   }
+
+  const imageUrl = post.image_path
+    ? supabase.storage.from("post-images").getPublicUrl(post.image_path).data
+        .publicUrl
+    : null;
 
   const fetchAuthorNickname = async () => {
     if (post.user_id === null) {
@@ -166,6 +173,19 @@ export default async function PostDetailPage({
           <p className="mt-5 whitespace-pre-wrap break-words leading-7 text-gray-700">
             {post.content}
           </p>
+
+          {imageUrl && (
+            <div className="relative mt-5 h-80 overflow-hidden rounded-xl bg-gray-50 sm:h-[30rem]">
+              <Image
+                src={imageUrl}
+                alt="게시글 첨부 사진"
+                fill
+                unoptimized
+                sizes="(max-width: 672px) 100vw, 672px"
+                className="object-contain"
+              />
+            </div>
+          )}
 
           <div className="mt-6 border-t pt-4">
             <p className="text-sm text-gray-500">

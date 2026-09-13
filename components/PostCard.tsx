@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -8,6 +9,7 @@ type PostCardProps = {
   postId: number;
   authorNickname: string | null;
   content: string;
+  imageUrl : string | null;
   commentsEnabled: boolean;
   createdAt: string;
   empathyCount: number;
@@ -39,6 +41,7 @@ export default function PostCard({
   postId,
   authorNickname,
   content,
+  imageUrl,
   commentsEnabled,
   createdAt,
   empathyCount,
@@ -195,6 +198,19 @@ export default function PostCard({
               <p className="min-w-0 whitespace-pre-wrap break-words">
                 {content}
               </p>
+
+              {imageUrl && (
+                <div className="relative mt-4 h-72 overflow-hidden rounded-xl bg-gray-50 sm:h-96">
+                  <Image
+                    src = {imageUrl}
+                    alt="게시글 첨부 사진"
+                    fill
+                    unoptimized
+                    sizes="(max-width: 672px) 100vw, 672px"
+                    className="object-contain"
+                  />  
+                </div>
+              )}
 
               <time
                 dateTime={createdAt}

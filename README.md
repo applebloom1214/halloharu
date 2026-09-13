@@ -32,6 +32,8 @@
 - 작성자가 선택할 수 있는 게시글 댓글
 - 게시글 상세 페이지에서 댓글 작성, 조회, 수정, 삭제
 - 기록 내용 검색 및 검색 결과 페이지 이동
+- 게시글 사진 1장 첨부 및 미리보기
+- 게시글 삭제 시 Supabase Storage 사진 함께 삭제
 
 ## 회원가입 및 이메일 인증 흐름
 
@@ -68,6 +70,7 @@
 ### 백엔드 및 데이터베이스
 
 - Supabase
+- Supabase Storage
 - PostgreSQL
 - Supabase Auth
 - Row Level Security(RLS)
@@ -151,6 +154,10 @@ npm run dev
 - [x] 관리자용 신고 목록과 신고된 게시글 조회
 - [x] 신고 상태별 필터
 - [x] 신고 조치 완료 및 문제없음 처리
+- [x] Supabase Storage를 이용한 게시글 이미지 저장
+- [x] JPEG, PNG, WebP 지원
+- [x] 이미지 최대 용량 5MB
+- [x] 사용자별 폴더와 RLS 정책을 이용한 업로드·조회·삭제 권한 관리
 
 #### 인증 및 권한
 

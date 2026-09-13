@@ -18,6 +18,8 @@ type Post = {
   userId: string | null;
   authorNickname: string | null;
   content: string;
+  imagePath: string | null; // storage에서 삭제할 때 사용
+  imageUrl: string | null; // 화면에서 사진을 보여줄 때 사용
   commentsEnabled: boolean;
   empathyCount: number;
   cheerCount: number;
@@ -38,6 +40,7 @@ type DatabasePost = {
   id: number;
   user_id: string | null;
   content: string;
+  image_path: string | null;
   comments_enabled: boolean;
   created_at: string;
   reactions?: DatabaseReaction[];
@@ -61,6 +64,22 @@ type DatabaseReaction = {
 
 const POSTS_PER_PAGE = 10;
 
+const getImageFileExtension = (imageType: string) => {
+  if (imageType === "image/jpeg") {
+    return "jpg";
+  }
+
+  if (imageType === "image/png") {
+    return "png";
+  }
+
+  if (imageType === "image/webp") {
+    return "webp";
+  }
+
+  return null;
+};
+
 const getTodayInKorea = () =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -71,7 +90,9 @@ const getTodayInKorea = () =>
 
 export default function Home() {
   const [content, setContent] = useState("");
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [commentsEnabled, setCommentsEnabled] = useState(false);
+
   const [posts, setPosts] = useState<Post[]>([]);
   const [postFilter, setPostFilter] = useState<PostFilter>("all");
   const [hasMorePosts, setHasMorePosts] = useState(false);
@@ -93,6 +114,9 @@ export default function Home() {
     null,
   );
   const [selectedRecordContent, setSelectedRecordContent] = useState<
+    string | null
+  >(null);
+  const [selectedRecordImageUrl, setSelectedRecordImageUrl] = useState<
     string | null
   >(null);
   const [isSelectedRecordLoading, setIsSelectedRecordLoading] = useState(false);
@@ -155,6 +179,7 @@ export default function Home() {
             id,
             user_id,
             content,
+            image_path,
             comments_enabled,
             created_at,
             reactions(
@@ -290,6 +315,13 @@ export default function Home() {
                 ? (authorNicknameById.get(post.user_id) ?? null)
                 : null,
             content: post.content,
+            imagePath: post.image_path,
+            imageUrl:
+              post.image_path === null
+                ? null
+                : supabase.storage
+                    .from("post-images")
+                    .getPublicUrl(post.image_path).data.publicUrl,
             commentsEnabled: post.comments_enabled,
             empathyCount,
             cheerCount,
@@ -594,6 +626,7 @@ export default function Home() {
 
     setSelectRecordDate(dateKey);
     setSelectedRecordContent(null);
+    setSelectedRecordImageUrl(null);
     setSelectedRecordError(null);
     setIsSelectedRecordLoading(true);
 
@@ -602,7 +635,7 @@ export default function Home() {
 
       const { data, error } = await supabase
         .from("posts")
-        .select("content")
+        .select("content, image_path")
         .eq("user_id", userId)
         .eq("daily_post_date", dateKey)
         .maybeSingle();
@@ -619,6 +652,13 @@ export default function Home() {
       }
 
       setSelectedRecordContent(data.content);
+
+      const selectedImageUrl = data.image_path
+        ? supabase.storage.from("post-images").getPublicUrl(data.image_path)
+            .data.publicUrl
+        : null;
+
+      setSelectedRecordImageUrl(selectedImageUrl);
     } finally {
       setIsSelectedRecordLoading(false);
     }
@@ -642,12 +682,64 @@ export default function Home() {
     try {
       const supabase = createClient();
 
+      let uploadedImagePath: string | null = null;
+
+      const removeUploadedImage = async () => {
+        const imagePathToRemove = uploadedImagePath;
+
+        if (imagePathToRemove === null) {
+          return;
+        }
+
+        const { error: imageRemoveError } = await supabase.storage
+          .from("post-images")
+          .remove([imagePathToRemove]);
+
+        if (imageRemoveError) {
+          console.error("업로드된 사진 정리 실패:", imageRemoveError);
+        }
+      };
+
+      if (selectedImageFile !== null) {
+        const imageFileExtension = getImageFileExtension(
+          selectedImageFile.type,
+        );
+
+        if (imageFileExtension === null) {
+          setSubmitErrorMessage(
+            "지원하지 않는 형식의 사진입니다. 다시 선택해 주세요.",
+          );
+          return;
+        }
+
+        const imagePath = `${userId}/${crypto.randomUUID()}.${imageFileExtension}`;
+
+        const { error: imageUploadError } = await supabase.storage
+          .from("post-images")
+          .upload(imagePath, selectedImageFile, {
+            contentType: selectedImageFile.type,
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (imageUploadError) {
+          console.error("게시글 사진 업로드 실패:", imageUploadError);
+          setSubmitErrorMessage(
+            "사진을 업로드하지 못했습니다. 다시 시도해 주세요.",
+          );
+          return;
+        }
+
+        uploadedImagePath = imagePath;
+      }
+
       const { data, error } = await supabase
         .from("posts")
         .insert({
           content: trimmedContent,
           user_id: userId,
           comments_enabled: commentsEnabled,
+          image_path: uploadedImagePath,
         })
         .select(
           `
@@ -661,7 +753,9 @@ export default function Home() {
         .single();
 
       if (error) {
-        console.error("게시글 저장 실퍠:", error);
+        console.error("게시글 저장 실패 : ", error);
+
+        await removeUploadedImage();
 
         if (error.code === "23505") {
           setSubmitErrorMessage("오늘의 기록은 이미 남겼습니다.");
@@ -676,16 +770,25 @@ export default function Home() {
 
       if (!data) {
         console.error("저장된 게시글을 받지 못했습니다.");
+        await removeUploadedImage();
         return;
       }
 
       const databasePost = data as DatabasePost;
+
+      const newImageUrl =
+        uploadedImagePath === null
+          ? null
+          : supabase.storage.from("post-images").getPublicUrl(uploadedImagePath)
+              .data.publicUrl;
 
       const newPost: Post = {
         id: databasePost.id,
         userId: databasePost.user_id,
         authorNickname: userNickname,
         content: databasePost.content,
+        imagePath: uploadedImagePath,
+        imageUrl: newImageUrl,
         commentsEnabled: databasePost.comments_enabled,
         empathyCount: 0,
         cheerCount: 0,
@@ -699,6 +802,7 @@ export default function Home() {
 
       setPosts((previousPosts) => [newPost, ...previousPosts]);
       setContent("");
+      setSelectedImageFile(null);
       setCommentsEnabled(false);
       setHasPostedToday(true);
 
@@ -870,6 +974,12 @@ export default function Home() {
       return;
     }
 
+    const targetPost = posts.find((post) => post.id === postId);
+
+    if (!targetPost) {
+      return;
+    }
+
     const shouldDelete = window.confirm("이 게시글을 정말 삭제하시겠습니까 ?");
 
     if (!shouldDelete) {
@@ -881,11 +991,31 @@ export default function Home() {
     try {
       const supabase = createClient();
 
-      const { error } = await supabase.from("posts").delete().eq("id", postId);
+      const { data: deletedPost, error } = await supabase
+        .from("posts")
+        .delete()
+        .eq("id", postId)
+        .select("image_path")
+        .single();
 
       if (error) {
-        console.error("게시글 삭제 실퍠:", error);
+        console.error("게시글 삭제 실패 :", error);
         return;
+      }
+
+      if (deletedPost.image_path !== null) {
+        const { error: imageRemoveError } =
+          await supabase.storage
+            .from("post-images")
+            .remove([deletedPost.image_path]);
+
+        if (imageRemoveError) {
+          console.error("게시글 사진 삭제 실패:", imageRemoveError);
+
+          window.alert(
+            "게시글은 삭제되었지만 사진 파일을 정리하지 못했습니다.",
+          );
+        }
       }
 
       setPosts((previousPosts) =>
@@ -940,6 +1070,7 @@ export default function Home() {
             ) {
               setSelectRecordDate(null);
               setSelectedRecordContent(null);
+              setSelectedRecordImageUrl(null);
               setSelectedRecordError(null);
             }
           }
@@ -1001,7 +1132,7 @@ export default function Home() {
         userEmail={userEmail}
         isProfileLoading={isProfileLoading}
         userNickname={userNickname}
-        isAdmin = {isAdmin}
+        isAdmin={isAdmin}
         isSigningOut={isSigningOut}
         onLogout={handleLogout}
       />
@@ -1159,6 +1290,7 @@ export default function Home() {
               <SelectedRecordCard
                 selectedDate={selectedRecordDate}
                 content={selectedRecordContent}
+                imageUrl={selectedRecordImageUrl}
                 isLoading={isSelectedRecordLoading}
                 errorMessage={selectedRecordError}
               />
@@ -1166,6 +1298,8 @@ export default function Home() {
 
             <RecordForm
               content={content}
+              selectedImageFile={selectedImageFile}
+              onImageFileChange={setSelectedImageFile}
               commentsEnabled={commentsEnabled}
               onCommentsEnabledChange={setCommentsEnabled}
               isPostCreationUnavailable={isPostCreationUnavailable}
@@ -1247,6 +1381,7 @@ export default function Home() {
                   authorUserId={post.userId}
                   authorNickname={post.authorNickname}
                   content={post.content}
+                  imageUrl={post.imageUrl}
                   commentsEnabled={post.commentsEnabled}
                   createdAt={post.createdAt}
                   empathyCount={post.empathyCount}
