@@ -35,7 +35,7 @@ export default function HumorCaptionForm({
         </p>
 
         <Link
-          href="/login"
+          href="/login?next=/humor"
           className="mt-3 inline-block rounded-full bg-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
         >
           로그인하기

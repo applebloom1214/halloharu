@@ -51,8 +51,17 @@ export default function LoginPage() {
         return;
       }
 
-      router.replace("/");
+      const nextPath = new URLSearchParams(window.location.search).get("next");
+
+      const destination = 
+        nextPath?.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : "/";
+
+
+      router.replace(destination);
       router.refresh();
+          
     } finally {
       setIsSubmitting(false);
       setCaptchaToken("");

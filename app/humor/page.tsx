@@ -184,10 +184,17 @@ export default async function HumorPage() {
                         className="rounded-2xl border bg-white p-4"
                       >
                         <div className="flex items-center justify-between gap-4">
-                          <p className="text-sm font-semibold text-emerald-600">
-                            익명 참가자
-                          </p>
-
+                          <p
+                            className={`text-sm font-semibold ${
+                              caption.is_own
+                                ? "text-emerald-600"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {caption.is_own
+                              ? "나의 한마디"
+                              : "익명 참가자"}
+                          </p>  
                           <time
                             dateTime={caption.created_at}
                             className="shrink-0 text-xs text-gray-400"
