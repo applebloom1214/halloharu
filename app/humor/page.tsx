@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import HumorCaptionForm from "@/components/HumorCaptionForm";
+import HumorRatingButtons from "@/components/HumorRatingButtons";
+import HumorCaptionDeleteButton from "@/components/HumorCaptionDeleteButton";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -8,9 +10,12 @@ type HumorCaption = {
   id: number;
   content: string;
   created_at: string;
-  is_own : boolean;
+  is_own: boolean;
+  author_nickname: string | null;
+  total_score: number;
+  rating_count: number;
+  current_user_score: number | null;
 };
-
 
 const formatEndsAt = (endsAt: string) =>
   new Intl.DateTimeFormat("ko-KR", {
@@ -39,7 +44,6 @@ export default async function HumorPage() {
     .from("humor_prompts")
     .select("id, image_path, alt_text, starts_at, ends_at")
     .lte("starts_at", now)
-    .gt("ends_at", now)
     .order("starts_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -92,6 +96,11 @@ export default async function HumorPage() {
     );
   }
 
+  const currentTime = new Date(now).getTime();
+  const endsAtTime = new Date(prompt.ends_at).getTime();
+
+  const isParticipationOpen = currentTime < endsAtTime;
+
   const imageUrl = supabase.storage
     .from("humor-images")
     .getPublicUrl(prompt.image_path).data.publicUrl;
@@ -103,14 +112,42 @@ export default async function HumorPage() {
 
   const { data: captionData, error: captionsError } = await supabase
     .from("humor_caption_feed")
-    .select("id, content, created_at, is_own")
+    .select(
+      `id, 
+      content, 
+      created_at, 
+      is_own,
+      author_nickname,
+      total_score,
+      rating_count,
+      current_user_score`,
+    )
     .eq("prompt_id", prompt.id)
+    .order("total_score", { ascending: true })
     .order("created_at", { ascending: true });
 
   const captionList = (captionData ?? []) as HumorCaption[];
 
-  const hasSubmittedCaption =
-    captionList.some((caption) => caption.is_own,);
+  const sortedCaptionList = [...captionList].sort(
+    (firstCaption, secondCaption) => {
+      const scoreDifference =
+        secondCaption.total_score - firstCaption.total_score;
+
+      if(scoreDifference !== 0){
+        return scoreDifference;
+      }
+      
+      return(
+        new Date(secondCaption.created_at).getTime() -
+        new Date(firstCaption.created_at).getTime() 
+      );
+    },
+  );
+
+  const bestCaption =
+    sortedCaptionList.find((caption) => caption.rating_count > 0) ?? null;
+
+  const hasSubmittedCaption = captionList.some((caption) => caption.is_own);
 
   return (
     <main className="min-h-screen bg-[#FAFAFA] px-4 py-10 text-[#333333] sm:px-6">
@@ -132,7 +169,9 @@ export default async function HumorPage() {
           </h1>
 
           <p className="mt-3 text-sm text-gray-500">
-            참여 마감: {formatEndsAt(prompt.ends_at)}
+            {isParticipationOpen
+              ? `참여 종료 : ${formatEndsAt(prompt.ends_at)}`
+              : "참여가 종료되어 최종 결과가 공개되었습니다."}
           </p>
 
           <div className="relative mt-6 h-80 overflow-hidden rounded-2xl bg-gray-50 sm:h-[32rem]">
@@ -155,12 +194,58 @@ export default async function HumorPage() {
             </p>
           ) : (
             <>
-              <HumorCaptionForm
-                promptId={prompt.id}
-                currentUserId={currentUserId}
-                hasSubmittedCaption={hasSubmittedCaption}
-              />
+              <section className="mt-6 rounded-2xl border-2 border-amber-200 bg-amber-50 px-5 py-6 text-center">
+                {bestCaption === null ? (
+                  <>
+                    <p className="text-sm font-bold text-amber-600">BEST 1</p>
 
+                    <p className="mt-3 text-sm text-gray-500">
+                      첫 번째 평가를 기다리고 있어요.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-amber-600">
+                      🏆 BEST 1
+                    </p>
+
+                    <p className="mt-4 whitespace-pre-wrap break-words text-xl font-bold leading-8 text-gray-800 sm:text-2xl">
+                      {bestCaption.content}
+                    </p>
+
+                    <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm">
+                      <span className="font-semibold text-gray-500">
+                        {isParticipationOpen
+                          ? bestCaption.is_own
+                            ? "나의 한마디"
+                            : "익명 참가자"
+                          : (bestCaption.author_nickname ??
+                            "알 수 없는 참가자")}
+                      </span>
+
+                      <span className="text-amber-600">
+                        총점 {bestCaption.total_score}점 ·{" "}
+                        {bestCaption.rating_count}명 평가
+                      </span>
+                    </div>
+                  </>
+                )}
+              </section>
+
+              {isParticipationOpen ? (
+                <HumorCaptionForm
+                  key={`${prompt.id}-${hasSubmittedCaption ? "submitted" : "open"}`}
+                  promptId={prompt.id}
+                  currentUserId={currentUserId}
+                  hasSubmittedCaption={hasSubmittedCaption}
+                />
+              ) : (
+                <div className="mt-8 rounded-2xl bg-gray-50 px-4 py-5 text-center">
+                  <p className="text-sm text-gray-500">
+                    한마디 등록과 별점 평가가 모두 종료되었습니다.
+                  </p>
+                </div>
+              )}
               <section className="mt-8 border-t pt-8">
                 <div className="flex items-center justify-between gap-4">
                   <h2 className="text-xl font-bold text-gray-800">
@@ -178,7 +263,7 @@ export default async function HumorPage() {
                   </p>
                 ) : (
                   <ul className="mt-4 space-y-3">
-                    {captionList.map((caption) => (
+                    {sortedCaptionList.map((caption) => (
                       <li
                         key={caption.id}
                         className="rounded-2xl border bg-white p-4"
@@ -191,10 +276,13 @@ export default async function HumorPage() {
                                 : "text-gray-500"
                             }`}
                           >
-                            {caption.is_own
-                              ? "나의 한마디"
-                              : "익명 참가자"}
-                          </p>  
+                            {isParticipationOpen
+                              ? caption.is_own
+                                ? "나의 한마디"
+                                : "익명 참가자"
+                              : (caption.author_nickname ??
+                                "알 수 없는 참가자")}
+                          </p>
                           <time
                             dateTime={caption.created_at}
                             className="shrink-0 text-xs text-gray-400"
@@ -206,6 +294,24 @@ export default async function HumorPage() {
                         <p className="mt-3 whitespace-pre-wrap break-words text-gray-700">
                           {caption.content}
                         </p>
+
+                        <p className="mt-3 text-sm font-medium text-amber-500">
+                          총점 {caption.total_score}점 · {caption.rating_count}
+                          명 평가
+                        </p>
+
+                        {isParticipationOpen && (
+                          <HumorRatingButtons
+                            captionId={caption.id}
+                            currentUserId={currentUserId}
+                            isOwn={caption.is_own}
+                            initialScore={caption.current_user_score}
+                          />
+                        )}
+
+                        {isParticipationOpen && caption.is_own && (
+                          <HumorCaptionDeleteButton captionId={caption.id} />
+                        )}
                       </li>
                     ))}
                   </ul>
