@@ -133,13 +133,13 @@ export default async function HumorPage() {
       const scoreDifference =
         secondCaption.total_score - firstCaption.total_score;
 
-      if(scoreDifference !== 0){
+      if (scoreDifference !== 0) {
         return scoreDifference;
       }
-      
-      return(
+
+      return (
         new Date(secondCaption.created_at).getTime() -
-        new Date(firstCaption.created_at).getTime() 
+        new Date(firstCaption.created_at).getTime()
       );
     },
   );
@@ -152,12 +152,21 @@ export default async function HumorPage() {
   return (
     <main className="min-h-screen bg-[#FAFAFA] px-4 py-10 text-[#333333] sm:px-6">
       <section className="mx-auto max-w-2xl">
-        <Link
-          href="/"
-          className="text-sm text-gray-500 transition hover:text-emerald-600"
-        >
-          ← 하루 기록으로 돌아가기
-        </Link>
+        <nav className="flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="text-sm text-gray-500 hover:text-emerald-600"
+          >
+            ← 하루 기록
+          </Link>
+
+          <Link
+            href="/humor/archive"
+            className="text-sm font-semibold text-emerald-600 hover:text-emerald-700"
+          >
+            지난 회차 →
+          </Link>
+        </nav>
 
         <div className="mt-6 rounded-3xl border bg-white p-5 shadow-sm sm:p-8">
           <p className="text-sm font-semibold text-emerald-500">
