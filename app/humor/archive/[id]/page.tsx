@@ -50,7 +50,7 @@ export default async function ArchiveDetailPage({
     .getPublicUrl(prompt.image_path).data.publicUrl;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
+    <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <Link href="/humor/archive" className="text-sm text-emerald-600">
         ← 지난 회차 목록
       </Link>
@@ -64,7 +64,7 @@ export default async function ArchiveDetailPage({
         })}
       </p>
 
-      <div className="relative mt-6 h-80 rounded-xl bg-gray-50">
+      <div className="relative mt-6 h-80 overflow-hidden rounded-2xl bg-gray-50 sm:h-[32rem]">
         <Image
           src={imageUrl}
           alt={prompt.alt_text}

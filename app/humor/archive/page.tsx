@@ -12,7 +12,15 @@ export default async function HumorArchivePage() {
     .order("ends_at", { ascending: false });
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-10">
+    <main className="mx-auto max-w-4xl px-6 py-10">
+      <nav className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <Link href="/" className="text-gray-500 hover:text-emerald-600">
+          하루 기록
+        </Link>
+        <Link href="/humor" className="font-semibold text-emerald-600">
+          ← 유머 공간
+        </Link>
+      </nav>
       <h1 className="text-2xl font-bold">지난 회차</h1>
 
       {error ? (
@@ -23,7 +31,7 @@ export default async function HumorArchivePage() {
         <ul className="mt-6 space-y-4">
           {prompt.map((prompt, index) => (
             <li key={prompt.id} className="rounded-xl border p-4">
-              <div className="relative mb-3 h-32 w-full rounded-lg bg-gray-50 sm:w-40">
+              <div className="relative mb-4 h-56 w-full rounded-lg bg-gray-50 sm:h-64 sm:w-64">
                 <Image
                   src={
                     supabase.storage
@@ -32,7 +40,7 @@ export default async function HumorArchivePage() {
                   }
                   alt={prompt.alt_text}
                   fill
-                  sizes="(max-width:640px) 100vw, 160px"
+                  sizes="(max-width:640px) 100vw, 256px"
                   loading={index === 0 ? "eager" : "lazy"}
                   unoptimized
                   className="object-contain"
