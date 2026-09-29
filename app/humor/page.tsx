@@ -3,6 +3,7 @@ import Link from "next/link";
 import HumorCaptionForm from "@/components/HumorCaptionForm";
 import HumorRatingButtons from "@/components/HumorRatingButtons";
 import HumorCaptionDeleteButton from "@/components/HumorCaptionDeleteButton";
+import HumorCaptionReportButton from "@/components/HumorCaptionReportButton";
 
 import { createClient } from "@/lib/supabase/server";
 
@@ -127,6 +128,27 @@ export default async function HumorPage() {
     .order("created_at", { ascending: true });
 
   const captionList = (captionData ?? []) as HumorCaption[];
+
+  const reportedCaptionIds = new Set<number>();
+
+  if(currentUserId !== null && captionList.length>0){
+    const {data : reports, error : reportsError} = await supabase
+      .from("humor_caption_reports")
+      .select("caption_id")
+      .eq("reporter_id", currentUserId)
+      .in(
+        "caption_id",
+        captionList.map((caption) => caption.id),
+      );
+
+    if(reportsError){
+      console.error("한마디 신고 내역 조회 실패 : ", reportsError);
+    } else{
+      for (const report of reports ?? []){
+        reportedCaptionIds.add(report.caption_id);
+      }
+    }
+  }
 
   const sortedCaptionList = [...captionList].sort(
     (firstCaption, secondCaption) => {
@@ -321,6 +343,13 @@ export default async function HumorPage() {
                         {isParticipationOpen && caption.is_own && (
                           <HumorCaptionDeleteButton captionId={caption.id} />
                         )}
+
+                        <HumorCaptionReportButton
+                          captionId={caption.id}
+                          currentUserId={currentUserId}
+                          isOwn={caption.is_own}
+                          initialReported ={reportedCaptionIds.has(caption.id)}
+                        /> 
                       </li>
                     ))}
                   </ul>

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
+import HumorCaptionReportButton from "@/components/HumorCaptionReportButton";
+
 type ArchiveDetailPageProps = {
   params: Promise<{ id: string }>;
 };
@@ -19,6 +21,11 @@ export default async function ArchiveDetailPage({
   }
 
   const supabase = await createClient();
+
+  const { data: claimsData } = await supabase.auth.getClaims();
+
+  const currentUserId =
+    typeof claimsData?.claims.sub === "string" ? claimsData.claims.sub : null;
 
   const { data: prompt, error } = await supabase
     .from("humor_prompts")
@@ -37,10 +44,31 @@ export default async function ArchiveDetailPage({
 
   const { data: captions, error: captionsError } = await supabase
     .from("humor_caption_feed")
-    .select("id, content, author_nickname, total_score, rating_count")
+    .select("id, content, is_own, author_nickname, total_score, rating_count")
     .eq("prompt_id", promptId)
     .order("total_score", { ascending: false })
     .order("created_at", { ascending: false });
+
+  const reportedCaptionIds = new Set<number>();
+
+  if (currentUserId !== null && captions && captions.length > 0) {
+    const { data: reports, error: reportsError } = await supabase
+      .from("humor_caption_reports")
+      .select("caption_id")
+      .eq("reporter_id", currentUserId)
+      .in(
+        "caption_id",
+        captions.map((caption) => caption.id),
+      );
+
+    if (reportsError) {
+      console.error("지난 회차 신고 내역 조회 실패:", reportsError);
+    } else {
+      for (const report of reports ?? []) {
+        reportedCaptionIds.add(report.caption_id);
+      }
+    }
+  }
 
   const bestCaption =
     captions?.find((caption) => caption.rating_count > 0) ?? null;
@@ -112,6 +140,12 @@ export default async function ArchiveDetailPage({
                 <p className="mt-2 text-sm text-amber-600">
                   총점 {caption.total_score}점 · {caption.rating_count}명 평가
                 </p>
+                <HumorCaptionReportButton
+                  captionId={caption.id}
+                  currentUserId={currentUserId}
+                  isOwn={caption.is_own}
+                  initialReported={reportedCaptionIds.has(caption.id)}
+                />
               </li>
             ))}
           </ol>

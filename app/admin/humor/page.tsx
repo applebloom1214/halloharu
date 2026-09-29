@@ -98,6 +98,15 @@ export default async function AdminHumorPage() {
             이번 주 제목짓기에 사용할 사진을 등록하는 관리자 페이지입니다.
           </p>
 
+          <div className="mt-4">
+            <Link
+              href="/admin/humor/reports"
+              className="inline-block font-semibold text-emerald-600 hover:underline"
+            >
+              한마디 신고 관리 →
+            </Link>  
+          </div>
+
           <HumorPromptForm currentUserId={currentUserId}/>
         </div>
       </section>
