@@ -166,7 +166,6 @@ export default async function PostDetailPage({
       console.error("댓글 신고 상태 조회 실패 : ", ownReportsError);
       throw new Error("댓글 신고 상태를 불러오지 못했습니다.");
     }
-    
     ownReports?.forEach((report) => {
       reportedCommentIds.add(report.comment_id);
     });
