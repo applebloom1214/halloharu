@@ -3,6 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
 import AdminReportActions from "@/components/AdminReportAction";
+import AdminHumorReportActions from "@/components/AdminHumorReportActions";
+import AdminCommentReportActions from "@/components/AdminCommentReportActions";
 
 type ReportedPost = {
   id: number;
@@ -23,6 +25,15 @@ type AdminReportsPageProps = {
 };
 
 type ReportFilter = "all" | "pending" | "resolved" | "dismissed";
+
+type UnifiedReport = {
+  kind: "post" | "comment" | "humor";
+  targetId: number;
+  reporterId: string;
+  reason: string;
+  status: string;
+  createdAt: string;
+};
 
 const isReportFilter = (value: string): value is ReportFilter => {
   return (
@@ -182,7 +193,84 @@ export default async function AdminReportsPage({
   }
 
   const reportList = reports ?? [];
-  const reportCount = reportList.length;
+
+  let commentReportQuery = supabase
+    .from("comment_reports")
+    .select("comment_id, reporter_id, reason, status, created_at");
+
+  if (selectedStatus !== "all") {
+    commentReportQuery = commentReportQuery.eq("status", selectedStatus);
+  }
+
+  const { data: commentReports, error: commentReportsError } =
+    await commentReportQuery.order("created_at", { ascending: false });
+
+  if (commentReportsError) {
+    console.error("댓글 신고 목록 조회 실패 : ", commentReportsError);
+    throw new Error("댓글 신고 목록을 불러오지 못했씁니다.");
+  }
+
+  const commentReportList = commentReports ?? [];
+
+  let humorReportsQuery = supabase
+    .from("humor_caption_reports")
+    .select("caption_id, reporter_id, reason, status, created_at");
+
+  if (selectedStatus !== "all") {
+    humorReportsQuery = humorReportsQuery.eq("status", selectedStatus);
+  }
+
+  const { data: humorReports, error: humorReportsError } =
+    await humorReportsQuery.order("created_at", { ascending: false });
+
+  if (humorReportsError) {
+    console.error("유머 한마디 신고 목록 조회 실패:", humorReportsError);
+    throw new Error("유머 한마디 신고 목록을 불러오지 못했습니다.");
+  }
+
+  const humorReportList = humorReports ?? [];
+
+  const reportedCaptionIds = [
+    ...new Set(humorReportList.map((report) => report.caption_id)),
+  ];
+
+  const { data: reportedCaptions, error: reportedCaptionsError } =
+    reportedCaptionIds.length > 0
+      ? await supabase
+          .from("humor_captions")
+          .select("id, content")
+          .in("id", reportedCaptionIds)
+      : { data: [], error: null };
+
+  if (reportedCaptionsError) {
+    console.error("신고된 한마디 조회 실패 : ", reportedCaptionsError);
+    throw new Error("신고된 한마디를 불러오지 못했습니다.");
+  }
+
+  const reportedCaptionById = new Map(
+    (reportedCaptions ?? []).map((caption) => [caption.id, caption] as const),
+  );
+
+  const reportedCommentIds = [
+    ...new Set(commentReportList.map((report) => report.comment_id)),
+  ];
+
+  const { data: reportedComments, error: reportedCommentsError } =
+    reportedCommentIds.length > 0
+      ? await supabase
+          .from("comments")
+          .select("id, post_id, content")
+          .in("id", reportedCommentIds)
+      : { data: [], error: null };
+
+  if (reportedCommentsError) {
+    console.error("신고된 댓글 조회 실패 : ", reportedCommentsError);
+    throw new Error("신고된 댓글을 불러오지 못했습니다.");
+  }
+
+  const reportedCommentById = new Map(
+    (reportedComments ?? []).map((comment) => [comment.id, comment] as const),
+  );
 
   const reportedPostIds = [
     ...new Set(reportList.map((report) => report.post_id)),
@@ -244,6 +332,37 @@ export default async function AdminReportsPage({
     }
   }
 
+  const unifiedReportList: UnifiedReport[] = [
+    ...reportList.map((report) => ({
+      kind: "post" as const,
+      targetId: report.post_id,
+      reporterId: report.reporter_id,
+      reason: report.reason,
+      status: report.status,
+      createdAt: report.created_at,
+    })),
+    ...commentReportList.map((report) => ({
+      kind: "comment" as const,
+      targetId: report.comment_id,
+      reporterId: report.reporter_id,
+      reason: report.reason,
+      status: report.status,
+      createdAt: report.created_at,
+    })),
+    ...humorReportList.map((report) => ({
+      kind: "humor" as const,
+      targetId: report.caption_id,
+      reporterId: report.reporter_id,
+      reason: report.reason,
+      status: report.status,
+      createdAt: report.created_at,
+    })),
+  ].sort(
+    (first, second) =>
+      new Date(second.createdAt).getTime() -
+      new Date(first.createdAt).getTime(),
+  );
+
   return (
     <main className="min-h-screen bg-[#FAFAFA] px-6 py-12 text-[#333333]">
       <section className="mx-auto max-w-2xl">
@@ -262,7 +381,7 @@ export default async function AdminReportsPage({
           </p>
 
           <p className="mt-4 text-sm text-gray-600">
-            현재 조회된 신고는 총 {reportCount}건입니다.
+            현재 조회된 게시글 신고는 총 {unifiedReportList.length}건입니다.
           </p>
 
           <nav
@@ -288,36 +407,65 @@ export default async function AdminReportsPage({
             ))}
           </nav>
 
-          {reportList.length === 0 ? (
-            <div className="mt-6 rounded-2xl border bg-white p-8 text-center shadow-sm">
-              <p className="text-sm text-gray-400">
-                현재 접수된 신고가 없습니다.
-              </p>
-            </div>
+          {unifiedReportList.length === 0 ? (
+            <p className="mt-6 text-sm text-gray-400">
+              현재 조회된 신고가 없습니다.
+            </p>
           ) : (
             <ul className="mt-6 space-y-3">
-              {reportList.map((report) => {
-                const reportedPost = reportedPostById.get(report.post_id);
+              {unifiedReportList.map((report) => {
+                const post =
+                  report.kind === "post"
+                    ? reportedPostById.get(report.targetId)
+                    : null;
 
-                const postAuthorNickname =
-                  reportedPost?.user_id !== null &&
-                  reportedPost?.user_id !== undefined
-                    ? (nicknameByUserId.get(reportedPost.user_id) ??
-                      "알 수 없는 사용자")
-                    : "알 수 없는 사용자";
+                const comment =
+                  report.kind === "comment"
+                    ? reportedCommentById.get(report.targetId)
+                    : null;
+
+                const caption =
+                  report.kind === "humor"
+                    ? reportedCaptionById.get(report.targetId)
+                    : null;
+
+                const kindLabel =
+                  report.kind === "post"
+                    ? "게시글"
+                    : report.kind === "comment"
+                      ? "댓글"
+                      : "유머 한마디";
+
+                const content =
+                  report.kind === "post"
+                    ? (post?.content ?? "게시글 내용을 찾을 수 없습니다.")
+                    : report.kind === "comment"
+                      ? (comment?.content ?? "댓글 내용을 찾을 수 없습니다.")
+                      : (caption?.content ?? "한마디 내용을 찾을 수 없습니다.");
+
+                const detailHref =
+                  report.kind === "post"
+                    ? `/posts/${report.targetId}`
+                    : comment
+                      ? `/posts/${comment.post_id}`
+                      : null;
+
+                const postAuthorNickname = post?.user_id
+                  ? (nicknameByUserId.get(post.user_id) ?? "알 수 없는 사용자")
+                  : "알 수 없는 사용자";
 
                 const reporterNickname =
-                  nicknameByUserId.get(report.reporter_id) ??
+                  nicknameByUserId.get(report.reporterId) ??
                   "알 수 없는 사용자";
 
                 return (
                   <li
-                    key={`${report.post_id}-${report.reporter_id}`}
+                    key={`${report.kind}:${report.targetId}:${report.reporterId}`}
                     className="rounded-2xl border bg-white p-5 shadow-sm"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-sm font-semibold text-gray-700">
-                        게시글 #{report.post_id}
+                        {kindLabel} #{report.targetId}
                       </span>
 
                       <div className="flex flex-wrap items-center gap-2">
@@ -325,60 +473,60 @@ export default async function AdminReportsPage({
                           {REPORT_REASON_LABELS[report.reason] ?? report.reason}
                         </span>
 
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            report.status === "resolved"
-                              ? "bg-emerald-50 text-emerald-600"
-                              : report.status === "dismissed"
-                                ? "bg-gray-100 text-gray-500"
-                                : "bg-amber-50 text-amber-600"
-                          }`}
-                        >
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
                           {REPORT_STATUS_LABELS[report.status] ?? report.status}
                         </span>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500">
-                      <p>
-                        작성자:{" "}
-                        <span className="font-semibold text-gray-700">
-                          {postAuthorNickname}
-                        </span>
+                    {report.kind === "post" && (
+                      <p className="mt-3 text-xs text-gray-500">
+                        작성자: {postAuthorNickname} · 신고자:{" "}
+                        {reporterNickname}
                       </p>
-
-                      <p>
-                        신고자:{" "}
-                        <span className="font-semibold text-gray-700">
-                          {reporterNickname}
-                        </span>
-                      </p>
-                    </div>
+                    )}
 
                     <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">
-                      {reportedPost?.content ??
-                        "게시글 내용을 찾을 수 없습니다."}
+                      {content}
                     </p>
 
-                    <Link
-                      href={`/posts/${report.post_id}`}
-                      className="mt-4 inline-block text-sm font-semibold text-emerald-600 transition hover:text-emerald-700"
-                    >
-                      게시글 상세 보기 →
-                    </Link>
+                    {detailHref && (
+                      <Link
+                        href={detailHref}
+                        className="mt-3 inline-block text-sm font-semibold text-emerald-600"
+                      >
+                        {report.kind === "post"
+                          ? "게시글 상세 보기 →"
+                          : "댓글이 달린 게시글 보기 →"}
+                      </Link>
+                    )}
 
                     <time
-                      dateTime={report.created_at}
+                      dateTime={report.createdAt}
                       className="mt-3 block text-xs text-gray-400"
                     >
-                      접수: {formatCreatedAt(report.created_at)}
+                      접수: {formatCreatedAt(report.createdAt)}
                     </time>
 
-                    <AdminReportActions
-                      postId={report.post_id}
-                      reporterId={report.reporter_id}
-                      currentStatus={report.status}
-                    />
+                    {report.kind === "post" ? (
+                      <AdminReportActions
+                        postId={report.targetId}
+                        reporterId={report.reporterId}
+                        currentStatus={report.status}
+                      />
+                    ) : report.kind === "comment" ? (
+                      <AdminCommentReportActions
+                        commentId={report.targetId}
+                        reporterId={report.reporterId}
+                        currentStatus={report.status}
+                      />
+                    ) : (
+                      <AdminHumorReportActions
+                        captionId={report.targetId}
+                        reporterId={report.reporterId}
+                        currentStatus={report.status}
+                      />
+                    )}
                   </li>
                 );
               })}

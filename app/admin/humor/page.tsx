@@ -100,10 +100,10 @@ export default async function AdminHumorPage() {
 
           <div className="mt-4">
             <Link
-              href="/admin/humor/reports"
+              href="/admin/reports"
               className="inline-block font-semibold text-emerald-600 hover:underline"
             >
-              한마디 신고 관리 →
+              신고 관리 →
             </Link>  
           </div>
 

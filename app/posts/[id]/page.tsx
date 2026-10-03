@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import CommentForm from "@/components/CommentForm";
 import CommentDeleteButton from "@/components/CommentDeleteButton";
 import CommentEditForm from "@/components/CommentEditForm";
+import CommentReportButton from "@/components/CommentReportButton";
 
 type PostDetailPageProps = {
   params: Promise<{
@@ -149,6 +150,28 @@ export default async function PostDetailPage({
 
   const commentList = (comments ?? []) as CommentWithAuthor[];
 
+  const reportedCommentIds = new Set<number>();
+
+  if(currentUserId !== null && commentList.length >0){
+    const {data : ownReports, error : ownReportsError} = await supabase
+      .from("comment_reports")
+      .select("comment_id")
+      .eq("reporter_id", currentUserId)
+      .in(
+        "comment_id",
+        commentList.map((comment) => comment.id),
+      );
+
+    if(ownReportsError){
+      console.error("댓글 신고 상태 조회 실패 : ", ownReportsError);
+      throw new Error("댓글 신고 상태를 불러오지 못했습니다.");
+    }
+    
+    ownReports?.forEach((report) => {
+      reportedCommentIds.add(report.comment_id);
+    });
+  }
+
   const formattedCreatedAt = new Date(post.created_at).toLocaleString("ko-KR", {
     timeZone: "Asia/Seoul",
   });
@@ -240,6 +263,14 @@ export default async function PostDetailPage({
                     <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">
                       {comment.content}
                     </p>
+                  )}
+
+                  {currentUserId !== null && currentUserId !== comment.user_id && (
+                    <CommentReportButton
+                      commentId={comment.id}
+                      currentUserId={currentUserId}
+                      initialReported={reportedCommentIds.has(comment.id)}
+                    />
                   )}
                 </li>
               ))}
