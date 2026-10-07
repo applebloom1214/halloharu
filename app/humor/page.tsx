@@ -131,8 +131,8 @@ export default async function HumorPage() {
 
   const reportedCaptionIds = new Set<number>();
 
-  if(currentUserId !== null && captionList.length>0){
-    const {data : reports, error : reportsError} = await supabase
+  if (currentUserId !== null && captionList.length > 0) {
+    const { data: reports, error: reportsError } = await supabase
       .from("humor_caption_reports")
       .select("caption_id")
       .eq("reporter_id", currentUserId)
@@ -141,10 +141,10 @@ export default async function HumorPage() {
         captionList.map((caption) => caption.id),
       );
 
-    if(reportsError){
+    if (reportsError) {
       console.error("한마디 신고 내역 조회 실패 : ", reportsError);
-    } else{
-      for (const report of reports ?? []){
+    } else {
+      for (const report of reports ?? []) {
         reportedCaptionIds.add(report.caption_id);
       }
     }
@@ -169,8 +169,28 @@ export default async function HumorPage() {
   const bestCaption =
     sortedCaptionList.find((caption) => caption.rating_count > 0) ?? null;
 
-  const hasSubmittedCaption = captionList.some((caption) => caption.is_own);
+  let ownCaptionStatus: "none" | "visible" | "hidden" = "none";
 
+  if (currentUserId !== null) {
+    const { data: status, error: statusError } = await supabase.rpc(
+      "get_own_humor_caption_status",
+      {
+        target_prompt_id: prompt.id,
+      },
+    );
+
+    if (
+      statusError ||
+      (status !== "none" && status !== "visible" && status !== "hidden")
+    ) {
+      console.error("본인 한마디 상태 조회 실패:", statusError);
+      throw new Error("한마디 등록 상태를 확인하지 못했습니다.");
+    }
+
+    ownCaptionStatus = status;
+  }
+
+  const hasSubmittedCaption = ownCaptionStatus !== "none";
   return (
     <main className="min-h-screen bg-[#FAFAFA] px-4 py-10 text-[#333333] sm:px-6">
       <section className="mx-auto max-w-2xl">
@@ -265,10 +285,11 @@ export default async function HumorPage() {
 
               {isParticipationOpen ? (
                 <HumorCaptionForm
-                  key={`${prompt.id}-${hasSubmittedCaption ? "submitted" : "open"}`}
+                  key={`${prompt.id}-${ownCaptionStatus}`}
                   promptId={prompt.id}
                   currentUserId={currentUserId}
                   hasSubmittedCaption={hasSubmittedCaption}
+                  isCaptionHidden = {ownCaptionStatus === "hidden"}
                 />
               ) : (
                 <div className="mt-8 rounded-2xl bg-gray-50 px-4 py-5 text-center">
@@ -348,8 +369,8 @@ export default async function HumorPage() {
                           captionId={caption.id}
                           currentUserId={currentUserId}
                           isOwn={caption.is_own}
-                          initialReported ={reportedCaptionIds.has(caption.id)}
-                        /> 
+                          initialReported={reportedCaptionIds.has(caption.id)}
+                        />
                       </li>
                     ))}
                   </ul>

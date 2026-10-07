@@ -55,6 +55,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     const { data, error, count } = await supabase
       .from("posts")
       .select("id, user_id, content, created_at", { count: "exact" })
+      .eq("is_hidden", false)
       .ilike("content", `%${escapedKeyword}%`)
       .order("created_at", { ascending: false })
       .range(rangeStart, rangeEnd);

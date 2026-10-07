@@ -5,12 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import AdminReportActions from "@/components/AdminReportAction";
 import AdminHumorReportActions from "@/components/AdminHumorReportActions";
 import AdminCommentReportActions from "@/components/AdminCommentReportActions";
+import AdminRestoreContentButton from "@/components/AdminRestoreContentButton";
 
 type ReportedPost = {
   id: number;
   content: string;
   user_id: string | null;
   created_at: string;
+  is_hidden: boolean;
 };
 
 type Profile = {
@@ -238,7 +240,7 @@ export default async function AdminReportsPage({
     reportedCaptionIds.length > 0
       ? await supabase
           .from("humor_captions")
-          .select("id, content")
+          .select("id, content, is_hidden")
           .in("id", reportedCaptionIds)
       : { data: [], error: null };
 
@@ -259,7 +261,7 @@ export default async function AdminReportsPage({
     reportedCommentIds.length > 0
       ? await supabase
           .from("comments")
-          .select("id, post_id, content")
+          .select("id, post_id, content, is_hidden")
           .in("id", reportedCommentIds)
       : { data: [], error: null };
 
@@ -281,7 +283,7 @@ export default async function AdminReportsPage({
   if (reportedPostIds.length > 0) {
     const { data: postData, error: postsError } = await supabase
       .from("posts")
-      .select("id, content, user_id, created_at")
+      .select("id, content, user_id, created_at, is_hidden")
       .in("id", reportedPostIds);
 
     if (postsError) {
@@ -381,7 +383,7 @@ export default async function AdminReportsPage({
           </p>
 
           <p className="mt-4 text-sm text-gray-600">
-            현재 조회된 게시글 신고는 총 {unifiedReportList.length}건입니다.
+            현재 조회된 신고는 총 {unifiedReportList.length}건입니다.
           </p>
 
           <nav
@@ -428,6 +430,11 @@ export default async function AdminReportsPage({
                   report.kind === "humor"
                     ? reportedCaptionById.get(report.targetId)
                     : null;
+
+                const isHidden =
+                  post?.is_hidden === true ||
+                  comment?.is_hidden === true ||
+                  caption?.is_hidden === true;
 
                 const kindLabel =
                   report.kind === "post"
@@ -476,6 +483,12 @@ export default async function AdminReportsPage({
                         <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
                           {REPORT_STATUS_LABELS[report.status] ?? report.status}
                         </span>
+
+                        {isHidden && (
+                          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                            숨김
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -525,6 +538,13 @@ export default async function AdminReportsPage({
                         captionId={report.targetId}
                         reporterId={report.reporterId}
                         currentStatus={report.status}
+                      />
+                    )}
+
+                    {isHidden && (
+                      <AdminRestoreContentButton
+                        kind={report.kind}
+                        targetId={report.targetId}
                       />
                     )}
                   </li>

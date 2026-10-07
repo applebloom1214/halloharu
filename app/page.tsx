@@ -189,6 +189,8 @@ export default function Home() {
           `,
         );
 
+        postsQuery = postsQuery.eq("is_hidden", false);
+
         if (postFilter === "mine" && userId) {
           postsQuery = postsQuery.eq("user_id", userId);
         }
@@ -421,20 +423,11 @@ export default function Home() {
       try {
         const supabase = createClient();
 
-        const todayInKorea = getTodayInKorea();
-
         const [
-          { data: todayPost, error: todayPostError },
+          { data: postedToday, error: todayPostError },
           { data: streak, error: streakError },
         ] = await Promise.all([
-          supabase
-            .from("posts")
-            .select("id")
-            .eq("user_id", userId)
-            .eq("daily_post_date", todayInKorea)
-            .limit(1)
-            .maybeSingle(),
-
+          supabase.rpc("has_posted_today"),
           supabase.rpc("get_current_streak"),
         ]);
 
@@ -442,7 +435,7 @@ export default function Home() {
           console.error("오늘 기록 확인 실패:", todayPostError);
           setHasPostedToday(false);
         } else {
-          setHasPostedToday(todayPost !== null);
+          setHasPostedToday(postedToday === true);
         }
 
         if (streakError) {
@@ -469,6 +462,7 @@ export default function Home() {
         .from("posts")
         .select("daily_post_date")
         .eq("user_id", userId)
+        .eq("is_hidden", false)
         .not("daily_post_date", "is", null)
         .order("daily_post_date", { ascending: false });
 
@@ -637,6 +631,7 @@ export default function Home() {
         .from("posts")
         .select("content, image_path")
         .eq("user_id", userId)
+        .eq("is_hidden", false)
         .eq("daily_post_date", dateKey)
         .maybeSingle();
 
@@ -1004,10 +999,9 @@ export default function Home() {
       }
 
       if (deletedPost.image_path !== null) {
-        const { error: imageRemoveError } =
-          await supabase.storage
-            .from("post-images")
-            .remove([deletedPost.image_path]);
+        const { error: imageRemoveError } = await supabase.storage
+          .from("post-images")
+          .remove([deletedPost.image_path]);
 
         if (imageRemoveError) {
           console.error("게시글 사진 삭제 실패:", imageRemoveError);
@@ -1023,20 +1017,12 @@ export default function Home() {
       );
 
       if (userId) {
-        const todayInKorea = getTodayInKorea();
-
-        const { data: todayPost, error: todayPostError } = await supabase
-          .from("posts")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("daily_post_date", todayInKorea)
-          .limit(1)
-          .maybeSingle();
-
+        const { data: postedToday, error: todayPostError } =
+          await supabase.rpc("has_posted_today");
         if (todayPostError) {
           console.error("삭제 후 오늘 기록 확인 실패 :", todayPostError);
         } else {
-          setHasPostedToday(todayPost !== null);
+          setHasPostedToday(postedToday === true);
           setSubmitErrorMessage(null);
 
           const { data: updatedStreak, error: sterakError } =
@@ -1052,6 +1038,7 @@ export default function Home() {
             .from("posts")
             .select("daily_post_date")
             .eq("user_id", userId)
+            .eq("is_hidden", false)
             .not("daily_post_date", "is", null)
             .order("daily_post_date", { ascending: false });
 

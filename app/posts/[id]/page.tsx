@@ -87,6 +87,7 @@ export default async function PostDetailPage({
       `,
     )
     .eq("id", postId)
+    .eq("is_hidden", false)
     .maybeSingle();
 
   if (postError) {
@@ -140,6 +141,7 @@ export default async function PostDetailPage({
       `,
         )
         .eq("post_id", postId)
+        .eq("is_hidden", false)
         .order("created_at", { ascending: true }),
     ]);
 

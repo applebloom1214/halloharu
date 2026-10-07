@@ -40,6 +40,7 @@ export default async function UserPage({ params }: UserPageProps) {
       .from("posts")
       .select("id, content, image_path, created_at")
       .eq("user_id", userId)
+      .eq("is_hidden", false)
       .order("created_at", { ascending: false }),
   ]);
 

@@ -167,3 +167,92 @@ export async function updateCommentReportStatus(
     message: "신고 상태를 변경했습니다.",
   };
 }
+
+export async function restoreHiddenContent(
+  kind: "post" | "comment" | "humor",
+  targetId: number,
+): Promise<{ success: boolean; message: string }> {
+  if (
+    (kind !== "post" && kind !== "comment" && kind !== "humor") ||
+    !Number.isSafeInteger(targetId) ||
+    targetId <= 0
+  ) {
+    return {
+      success: false,
+      message: "올바르지 않은 복원 대상입니다.",
+    };
+  }
+
+  const supabase = await createClient();
+
+  const { data: claimsData, error: claimsError } =
+    await supabase.auth.getClaims();
+
+  const currentUserId =
+    typeof claimsData?.claims.sub === "string" ? claimsData.claims.sub : null;
+
+  if (claimsError || currentUserId === null) {
+    return {
+      success: false,
+      message: "로그인이 필요합니다.",
+    };
+  }
+
+  const { data: admin, error: adminError } = await supabase
+    .from("admins")
+    .select("user_id")
+    .eq("user_id", currentUserId)
+    .maybeSingle();
+
+  if (adminError || admin === null) {
+    return {
+      success: false,
+      message: "관리자 권한이 없습니다.",
+    };
+  }
+
+  const { data: restored, error: restoreError } = await supabase.rpc(
+    "restore_hidden_content",
+    {
+      target_kind: kind,
+      target_id: targetId,
+    },
+  );
+
+  if (restoreError) {
+    console.error("콘텐츠 복원 실패:", restoreError);
+
+    return {
+      success: false,
+      message: "콘텐츠를 복원하지 못했습니다. 다시 시도해 주세요.",
+    };
+  }
+
+  // 다른 신고 카드에서 이미 복원한 경우에도 화면을 갱신합니다.
+  revalidatePath("/admin/reports");
+
+  if (restored !== true) {
+    return {
+      success: false,
+      message: "이미 복원되었거나 대상을 찾을 수 없습니다.",
+    };
+  }
+
+  if (kind === "post") {
+    revalidatePath("/");
+    revalidatePath("/search");
+    revalidatePath("/posts/[id]", "page");
+    revalidatePath("/users/[userId]", "page");
+  } else if (kind === "comment") {
+    revalidatePath("/posts/[id]", "page");
+  } else {
+    revalidatePath("/humor");
+    revalidatePath("/humor/archive");
+    revalidatePath("/humor/archive/[id]", "page");
+  }
+
+  return {
+    success: true,
+    message: "콘텐츠를 복원했습니다.",
+  };
+}

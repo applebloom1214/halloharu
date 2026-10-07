@@ -50,21 +50,33 @@ export default function HumorRatingButtons({
         if (error) {
           console.error("유머 별점 등록 실패:", error);
           setErrorMessage("별점을 등록하지 못했습니다.");
+          router.refresh();
           return;
         }
       } else {
-        const { error } = await supabase
+        const { data: updatedRating, error } = await supabase
           .from("humor_caption_ratings")
           .update({
             score,
             updated_at: new Date().toISOString(),
           })
           .eq("caption_id", captionId)
-          .eq("user_id", currentUserId);
+          .eq("user_id", currentUserId)
+          .select("id")
+          .maybeSingle();
 
         if (error) {
-          console.error("유머 별점 변경 실패 : ", error);
+          console.error("유머 별점 변경 실패:", error);
           setErrorMessage("별점을 변경하지 못했습니다.");
+          router.refresh();
+          return;
+        }
+
+        if (updatedRating === null) {
+          setErrorMessage(
+            "별점을 변경할 수 없습니다. 최신 상태를 확인해 주세요.",
+          );
+          router.refresh();
           return;
         }
       }
@@ -87,18 +99,28 @@ export default function HumorRatingButtons({
     try {
       const supabase = createClient();
 
-      const { error } = await supabase
+      const { data: deletedRating, error } = await supabase
         .from("humor_caption_ratings")
         .delete()
         .eq("caption_id", captionId)
-        .eq("user_id", currentUserId);
+        .eq("user_id", currentUserId)
+        .select("id")
+        .maybeSingle();
 
       if (error) {
-        console.error("유머 별점 취소 실패 : ", error);
+        console.error("유머 별점 취소 실패:", error);
         setErrorMessage("별점을 취소하지 못했습니다.");
+        router.refresh();
         return;
       }
 
+      if (deletedRating === null) {
+        setErrorMessage(
+          "별점을 취소할 수 없습니다. 최신 상태를 확인해 주세요.",
+        );
+        router.refresh();
+        return;
+      }
       setSelectedScore(null);
       router.refresh();
     } finally {

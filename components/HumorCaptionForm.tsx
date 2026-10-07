@@ -12,12 +12,14 @@ type HumorCaptionFormProps = {
   promptId: number;
   currentUserId: string | null;
   hasSubmittedCaption: boolean;
+  isCaptionHidden : boolean;
 };
 
 export default function HumorCaptionForm({
   promptId,
   currentUserId,
   hasSubmittedCaption,
+  isCaptionHidden,
 }: HumorCaptionFormProps) {
   const router = useRouter();
 
@@ -40,6 +42,17 @@ export default function HumorCaptionForm({
         >
           로그인하기
         </Link>
+      </div>
+    );
+  }
+
+  if(isCaptionHidden){
+    return(
+      <div className="mt-8 rounded-2xl bg-amber-50 px-4 py-5 text-center text-sm text-amber-700">
+        <p>등록한 한마디가 관리자에 의해 숨김 처리되었습니다.</p>
+        <p className="mt-2">
+          이 회차에는 새 한마디를 등록할 수 없습니다.
+        </p>
       </div>
     );
   }
