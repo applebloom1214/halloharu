@@ -319,11 +319,7 @@ export default function Home() {
             content: post.content,
             imagePath: post.image_path,
             imageUrl:
-              post.image_path === null
-                ? null
-                : supabase.storage
-                    .from("post-images")
-                    .getPublicUrl(post.image_path).data.publicUrl,
+              post.image_path === null ? null : `/api/posts/${post.id}/image`,
             commentsEnabled: post.comments_enabled,
             empathyCount,
             cheerCount,
@@ -629,7 +625,7 @@ export default function Home() {
 
       const { data, error } = await supabase
         .from("posts")
-        .select("content, image_path")
+        .select("id, content, image_path")
         .eq("user_id", userId)
         .eq("is_hidden", false)
         .eq("daily_post_date", dateKey)
@@ -649,8 +645,7 @@ export default function Home() {
       setSelectedRecordContent(data.content);
 
       const selectedImageUrl = data.image_path
-        ? supabase.storage.from("post-images").getPublicUrl(data.image_path)
-            .data.publicUrl
+        ? `/api/posts/${data.id}/image`
         : null;
 
       setSelectedRecordImageUrl(selectedImageUrl);
@@ -774,8 +769,7 @@ export default function Home() {
       const newImageUrl =
         uploadedImagePath === null
           ? null
-          : supabase.storage.from("post-images").getPublicUrl(uploadedImagePath)
-              .data.publicUrl;
+          : `/api/posts/${databasePost.id}/image`;
 
       const newPost: Post = {
         id: databasePost.id,

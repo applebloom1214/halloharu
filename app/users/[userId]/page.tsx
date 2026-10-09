@@ -11,7 +11,7 @@ type UserPageProps = {
 type AuthorPost = {
   id: number;
   content: string;
-  image_path : string | null;
+  image_path: string | null;
   created_at: string;
 };
 
@@ -94,11 +94,7 @@ export default async function UserPage({ params }: UserPageProps) {
                     {post.image_path && (
                       <div className="relative mt-4 h-72 overflow-hidden rounded-xl bg-gray-50 sm:h-95">
                         <Image
-                          src={
-                            supabase.storage
-                              .from("post-images")
-                              .getPublicUrl(post.image_path).data.publicUrl 
-                          }
+                          src={`/api/posts/${post.id}/image`}
                           alt="게시글 첨부 사진"
                           fill
                           unoptimized

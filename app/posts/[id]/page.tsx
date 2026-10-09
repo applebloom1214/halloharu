@@ -99,10 +99,7 @@ export default async function PostDetailPage({
     notFound();
   }
 
-  const imageUrl = post.image_path
-    ? supabase.storage.from("post-images").getPublicUrl(post.image_path).data
-        .publicUrl
-    : null;
+  const imageUrl = post.image_path ? `/api/posts/${post.id}/image` : null;
 
   const fetchAuthorNickname = async () => {
     if (post.user_id === null) {
@@ -154,8 +151,8 @@ export default async function PostDetailPage({
 
   const reportedCommentIds = new Set<number>();
 
-  if(currentUserId !== null && commentList.length >0){
-    const {data : ownReports, error : ownReportsError} = await supabase
+  if (currentUserId !== null && commentList.length > 0) {
+    const { data: ownReports, error: ownReportsError } = await supabase
       .from("comment_reports")
       .select("comment_id")
       .eq("reporter_id", currentUserId)
@@ -164,7 +161,7 @@ export default async function PostDetailPage({
         commentList.map((comment) => comment.id),
       );
 
-    if(ownReportsError){
+    if (ownReportsError) {
       console.error("댓글 신고 상태 조회 실패 : ", ownReportsError);
       throw new Error("댓글 신고 상태를 불러오지 못했습니다.");
     }
@@ -266,13 +263,14 @@ export default async function PostDetailPage({
                     </p>
                   )}
 
-                  {currentUserId !== null && currentUserId !== comment.user_id && (
-                    <CommentReportButton
-                      commentId={comment.id}
-                      currentUserId={currentUserId}
-                      initialReported={reportedCommentIds.has(comment.id)}
-                    />
-                  )}
+                  {currentUserId !== null &&
+                    currentUserId !== comment.user_id && (
+                      <CommentReportButton
+                        commentId={comment.id}
+                        currentUserId={currentUserId}
+                        initialReported={reportedCommentIds.has(comment.id)}
+                      />
+                    )}
                 </li>
               ))}
             </ul>
