@@ -853,21 +853,50 @@ export default function Home() {
 
       const supabase = createClient();
 
-      const { error } = isSelected
+      const { data: changedReaction, error } = isSelected
         ? await supabase
             .from("reactions")
             .delete()
             .eq("post_id", postId)
             .eq("user_id", userId)
             .eq("reaction_type", reactionType)
-        : await supabase.from("reactions").insert({
-            post_id: postId,
-            user_id: userId,
-            reaction_type: reactionType,
-          });
+            .select("id")
+            .maybeSingle()
+        : await supabase
+            .from("reactions")
+            .insert({
+              post_id: postId,
+              user_id: userId,
+              reaction_type: reactionType,
+            })
+            .select("id")
+            .maybeSingle();
 
       if (error) {
         console.error("리액션 변경 실패:", error);
+
+        if (error.code === "42501") {
+          window.alert(
+            "리액션을 변경할 권한이 없습니다. 게시글 또는 로그인 상태가 변경되었을 수 있으니 새로고침해 주세요.",
+          );
+        } else if (error.code === "23505") {
+          window.alert(
+            "이미 등록된 리액션입니다. 새로고침해서 현재 상태를 확인해 주세요.",
+          );
+        } else {
+          window.alert(
+            "리액션을 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          );
+        }
+
+        return;
+      }
+
+      if (changedReaction === null) {
+        window.alert(
+          "리액션이 변경되지 않았습니다. 게시글 또는 리액션 상태가 변경되었을 수 있으니 새로고침해 주세요.",
+        );
+
         return;
       }
 
