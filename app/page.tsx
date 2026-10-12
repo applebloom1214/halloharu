@@ -146,6 +146,8 @@ export default function Home() {
 
   const pendingReactionsKeysRef = useRef<Set<string>>(new Set());
 
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
   const isPostCreationUnavailable =
     isPostsLoading ||
     userNickname === null ||
@@ -157,6 +159,8 @@ export default function Home() {
     if (isAuthLoading) {
       return;
     }
+
+    let isActive = true;
 
     const fetchPosts = async () => {
       const isLoadingAdditionalPosts = postsLimit > POSTS_PER_PAGE;
@@ -199,6 +203,10 @@ export default function Home() {
           .order("created_at", { ascending: false })
           .order("id", { ascending: false })
           .range(0, postsLimit);
+
+        if (!isActive) {
+          return;
+        }
 
         if (error) {
           console.error("게시글 불러오기 실퍠:", error);
@@ -268,6 +276,10 @@ export default function Home() {
           }
         }
 
+        if (!isActive) {
+          return;
+        }
+
         setHasMorePosts(hasMore);
 
         const convertedPosts: Post[] = displayedDatabasePosts.map((post) => {
@@ -333,14 +345,91 @@ export default function Home() {
         });
 
         setPosts(convertedPosts);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        console.error("게시글 조회 중 오류:", error);
+
+        if (isLoadingAdditionalPosts) {
+          setHasLoadMoreError(true);
+        } else {
+          setHasPostsError(true);
+        }
       } finally {
-        setIsPostsLoading(false);
-        setIsLoadingMore(false);
+        if (isActive) {
+          setIsPostsLoading(false);
+          setIsLoadingMore(false);
+        }
       }
     };
 
     fetchPosts();
+
+    return () => {
+      isActive = false;
+    };
   }, [isAuthLoading, userId, postFilter, postsLimit, postsRetryCount]);
+
+  // 목록 아래쪽에 가까워지면 추가 기록 조회
+  useEffect(() => {
+    if (
+      isAuthLoading ||
+      isPostsLoading ||
+      isLoadingMore ||
+      hasPostsError ||
+      hasLoadMoreError ||
+      !hasMorePosts ||
+      posts.length === 0
+    ) {
+      return;
+    }
+
+    const loadMoreElement = loadMoreRef.current;
+
+    if (loadMoreElement === null) {
+      return;
+    }
+
+    let isActive = true;
+    let didRequest = false;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!isActive || didRequest || !entry?.isIntersecting) {
+          return;
+        }
+
+        didRequest = true;
+        observer.unobserve(loadMoreElement);
+
+        setIsLoadingMore(true);
+        setPostsLimit((previousLimit) => previousLimit + POSTS_PER_PAGE);
+      },
+      {
+        rootMargin: "0px 0px 200px 0px",
+        threshold: 0,
+      },
+    );
+
+    observer.observe(loadMoreElement);
+
+    return () => {
+      isActive = false;
+      observer.disconnect();
+    };
+  }, [
+    isAuthLoading,
+    isPostsLoading,
+    isLoadingMore,
+    hasPostsError,
+    hasLoadMoreError,
+    hasMorePosts,
+    posts.length,
+    postFilter,
+    userId,
+  ]);
 
   // 사용자 정보 불러오기
   useEffect(() => {
@@ -1457,23 +1546,17 @@ export default function Home() {
                     </button>
                   </div>
                 ) : hasMorePosts ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsLoadingMore(true);
-                      setPostsLimit(
-                        (previousLimit) => previousLimit + POSTS_PER_PAGE,
-                      );
-                    }}
-                    disabled={isLoadingMore}
-                    className={`rounded-full border bg-white px-5 py-2 text-sm transition ${
-                      isLoadingMore
-                        ? "cursor-not-allowed text-gray-300"
-                        : "text-gray-600 hover:border-emerald-300 hover:text-emerald-500"
-                    }`}
+                  <div
+                    ref={loadMoreRef}
+                    className="flex min-h-12 items-center justify-center"
+                    aria-live="polite"
                   >
-                    {isLoadingMore ? "불러오는 중..." : "더 보기"}
-                  </button>
+                    {isLoadingMore && (
+                      <p className="text-sm text-gray-400">
+                        기록을 불러오는 중...
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <p className="text-xs text-gray-400">
                     모든 기록을 불러왔습니다.
