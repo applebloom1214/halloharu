@@ -1,5 +1,8 @@
-import Image from "next/image";
 import Link from "next/link";
+
+import AuthorPostList, {
+  type AuthorPost,
+} from "@/components/AuthorPostList";
 import { createClient } from "@/lib/supabase/server";
 
 type UserPageProps = {
@@ -8,22 +11,7 @@ type UserPageProps = {
   }>;
 };
 
-type AuthorPost = {
-  id: number;
-  content: string;
-  image_path: string | null;
-  created_at: string;
-};
-
-const formatCreatedAt = (createdAt: string) =>
-  new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(createdAt));
+const POSTS_PER_PAGE = 10;
 
 export default async function UserPage({ params }: UserPageProps) {
   const { userId } = await params;
@@ -32,19 +20,29 @@ export default async function UserPage({ params }: UserPageProps) {
 
   const [
     { data: profile, error: profileError },
-    { data: posts, error: postsError },
+    { data: posts, error: postsError, count: totalPostCount },
   ] = await Promise.all([
-    supabase.from("profiles").select("nickname").eq("id", userId).maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("nickname")
+      .eq("id", userId)
+      .maybeSingle(),
 
     supabase
       .from("posts")
-      .select("id, content, image_path, created_at")
+      .select("id, content, image_path, created_at", {
+        count: "exact",
+      })
       .eq("user_id", userId)
       .eq("is_hidden", false)
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(0, POSTS_PER_PAGE),
   ]);
 
-  const AuthorPosts = (posts ?? []) as AuthorPost[];
+  const fetchedPosts = (posts ?? []) as AuthorPost[];
+  const initialPosts = fetchedPosts.slice(0, POSTS_PER_PAGE);
+  const initialHasMore = fetchedPosts.length > POSTS_PER_PAGE;
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-4 py-10">
@@ -67,7 +65,9 @@ export default async function UserPage({ params }: UserPageProps) {
             </h1>
 
             <p className="mt-2 text-sm text-emerald-700">
-              총 {AuthorPosts.length}개의 하루를 남겼어요.
+              {postsError || totalPostCount === null
+                ? "총 기록 수를 불러오지 못했습니다."
+                : `총 ${totalPostCount}개의 하루를 남겼어요.`}
             </p>
           </header>
 
@@ -76,48 +76,24 @@ export default async function UserPage({ params }: UserPageProps) {
               <p className="rounded-2xl border border-red-100 bg-red-50 px-6 py-10 text-center text-sm text-red-500">
                 기록을 불러오지 못했습니다.
               </p>
-            ) : AuthorPosts.length === 0 ? (
+            ) : initialPosts.length === 0 ? (
               <p className="rounded-2xl border bg-white px-6 py-10 text-center text-sm text-gray-500">
                 아직 작성한 기록이 없습니다.
               </p>
             ) : (
-              <div className="space-y-3">
-                {AuthorPosts.map((post) => (
-                  <article
-                    key={post.id}
-                    className="rounded-2xl border bg-white p-4"
-                  >
-                    <p className="whitespace-pre-wrap break-words text-gray-700">
-                      {post.content}
-                    </p>
-
-                    {post.image_path && (
-                      <div className="relative mt-4 h-72 overflow-hidden rounded-xl bg-gray-50 sm:h-95">
-                        <Image
-                          src={`/api/posts/${post.id}/image`}
-                          alt="게시글 첨부 사진"
-                          fill
-                          unoptimized
-                          sizes="(max-width:670px) 100vw, 672px"
-                          className="object-contain"
-                        />
-                      </div>
-                    )}
-
-                    <time
-                      dateTime={post.created_at}
-                      className="mt-2 block text-xs text-gray-400"
-                    >
-                      {formatCreatedAt(post.created_at)}
-                    </time>
-                  </article>
-                ))}
-              </div>
+              <AuthorPostList
+                key={userId}
+                userId={userId}
+                initialPosts={initialPosts}
+                initialHasMore={initialHasMore}
+              />
             )}
           </section>
         </>
       ) : (
-        <p className="text-sm text-gray-500">작성자를 찾을 수 없습니다.</p>
+        <p className="text-sm text-gray-500">
+          작성자를 찾을 수 없습니다.
+        </p>
       )}
     </main>
   );
