@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { redirect } from "next/navigation";
+
 import { createClient } from "@/lib/supabase/server";
 
 import AdminReportActions from "@/components/AdminReportAction";
@@ -23,10 +25,29 @@ type Profile = {
 type AdminReportsPageProps = {
   searchParams: Promise<{
     status?: string | string[];
+    page?: string | string[];
   }>;
 };
 
 type ReportFilter = "all" | "pending" | "resolved" | "dismissed";
+
+const REPORT_PAGE_SIZE = 10;
+
+const getReportsPageHref = (status: ReportFilter, page: number): string => {
+  const params = new URLSearchParams();
+
+  if (status !== "all") {
+    params.set("status", status);
+  }
+
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+
+  const query = params.toString();
+
+  return query === "" ? "/admin/reports" : `/admin/reports?${query}`;
+};
 
 type UnifiedReport = {
   kind: "post" | "comment" | "humor";
@@ -91,7 +112,12 @@ const formatCreatedAt = (createdAt: string) =>
 export default async function AdminReportsPage({
   searchParams,
 }: AdminReportsPageProps) {
-  const { status } = await searchParams;
+  const { status, page } = await searchParams;
+
+  const parsedPage =
+    typeof page === "string" && /^[1-9]\d*$/.test(page) ? Number(page) : 1;
+
+  const requestedPage = Number.isSafeInteger(parsedPage) ? parsedPage : 1;
 
   const requestedStatus = typeof status === "string" ? status : "all";
 
@@ -167,52 +193,59 @@ export default async function AdminReportsPage({
     );
   }
 
+  let reportCountQuery = supabase
+    .from("admin_report_feed")
+    .select("kind", { count: "exact", head: true });
+
+  if (selectedStatus !== "all") {
+    reportCountQuery = reportCountQuery.eq("status", selectedStatus);
+  }
+
+  const { count: reportCount, error: reportCountError } =
+    await reportCountQuery;
+
+  if (reportCountError || reportCount === null) {
+    console.error("신고 건수 조회 실패:", reportCountError);
+    throw new Error("신고 건수를 불러오지 못했습니다.");
+  }
+
+  const totalPages = Math.max(1, Math.ceil(reportCount / REPORT_PAGE_SIZE));
+
+  const currentPage = Math.min(requestedPage, totalPages);
+
+  if (
+    page !== undefined &&
+    (typeof page !== "string" || page !== String(currentPage))
+  ) {
+    redirect(getReportsPageHref(selectedStatus, currentPage));
+  }
+
+  const from = (currentPage - 1) * REPORT_PAGE_SIZE;
+  const to = from + REPORT_PAGE_SIZE - 1;
+
   let reportsQuery = supabase
-    .from("reports")
-    .select("post_id, reporter_id, reason, created_at, status, reviewed_at");
+    .from("admin_report_feed")
+    .select(
+      "kind, targetId:target_id, reporterId:reporter_id, reason, status, createdAt:created_at",
+    );
 
   if (selectedStatus !== "all") {
     reportsQuery = reportsQuery.eq("status", selectedStatus);
   }
 
-  const { data: reports, error: reportsError } = await reportsQuery.order(
-    "created_at",
-    { ascending: false },
-  );
+  const { data: reports, error: reportsError } = await reportsQuery
+    .order("created_at", { ascending: false })
+    .order("kind", { ascending: true })
+    .order("target_id", { ascending: false })
+    .order("reporter_id", { ascending: true })
+    .range(from, to);
 
   if (reportsError) {
     console.error("신고 목록 조회 실패:", reportsError);
-
-    return (
-      <main className="min-h-screen bg-[#FAFAFA] px-6 py-12 text-[#333333]">
-        <section className="mx-auto max-w-2xl rounded-2xl border bg-white p-6 shadow-sm">
-          <p className="text-sm text-red-500">
-            신고 목록을 불러오지 못했습니다.
-          </p>
-        </section>
-      </main>
-    );
+    throw new Error("신고 목록을 불러오지 못했습니다.");
   }
 
-  const reportList = reports ?? [];
-
-  let commentReportQuery = supabase
-    .from("comment_reports")
-    .select("comment_id, reporter_id, reason, status, created_at");
-
-  if (selectedStatus !== "all") {
-    commentReportQuery = commentReportQuery.eq("status", selectedStatus);
-  }
-
-  const { data: commentReports, error: commentReportsError } =
-    await commentReportQuery.order("created_at", { ascending: false });
-
-  if (commentReportsError) {
-    console.error("댓글 신고 목록 조회 실패 : ", commentReportsError);
-    throw new Error("댓글 신고 목록을 불러오지 못했씁니다.");
-  }
-
-  const commentReportList = commentReports ?? [];
+  const unifiedReportList = (reports ?? []) as UnifiedReport[];
 
   let humorReportsQuery = supabase
     .from("humor_caption_reports")
@@ -222,7 +255,7 @@ export default async function AdminReportsPage({
     humorReportsQuery = humorReportsQuery.eq("status", selectedStatus);
   }
 
-  const { data: humorReports, error: humorReportsError } =
+  const { error: humorReportsError } =
     await humorReportsQuery.order("created_at", { ascending: false });
 
   if (humorReportsError) {
@@ -230,10 +263,12 @@ export default async function AdminReportsPage({
     throw new Error("유머 한마디 신고 목록을 불러오지 못했습니다.");
   }
 
-  const humorReportList = humorReports ?? [];
-
   const reportedCaptionIds = [
-    ...new Set(humorReportList.map((report) => report.caption_id)),
+    ...new Set(
+      unifiedReportList
+        .filter((report) => report.kind === "humor")
+        .map((report) => report.targetId),
+    ),
   ];
 
   const { data: reportedCaptions, error: reportedCaptionsError } =
@@ -254,7 +289,11 @@ export default async function AdminReportsPage({
   );
 
   const reportedCommentIds = [
-    ...new Set(commentReportList.map((report) => report.comment_id)),
+    ...new Set(
+      unifiedReportList
+        .filter((report) => report.kind === "comment")
+        .map((report) => report.targetId),
+    ),
   ];
 
   const { data: reportedComments, error: reportedCommentsError } =
@@ -275,7 +314,11 @@ export default async function AdminReportsPage({
   );
 
   const reportedPostIds = [
-    ...new Set(reportList.map((report) => report.post_id)),
+    ...new Set(
+      unifiedReportList
+        .filter((report) => report.kind === "post")
+        .map((report) => report.targetId),
+    ),
   ];
 
   const reportedPostById = new Map<number, ReportedPost>();
@@ -311,9 +354,9 @@ export default async function AdminReportsPage({
     .map((post) => post.user_id)
     .filter((id): id is string => id !== null);
 
-  const repoterIds = reportList.map((report) => report.reporter_id);
+  const reporterIds = unifiedReportList.map((report) => report.reporterId);
 
-  const profileIds = [...new Set([...postAuthorIds, ...repoterIds])];
+  const profileIds = [...new Set([...postAuthorIds, ...reporterIds])];
 
   const nicknameByUserId = new Map<string, string>();
 
@@ -334,37 +377,6 @@ export default async function AdminReportsPage({
     }
   }
 
-  const unifiedReportList: UnifiedReport[] = [
-    ...reportList.map((report) => ({
-      kind: "post" as const,
-      targetId: report.post_id,
-      reporterId: report.reporter_id,
-      reason: report.reason,
-      status: report.status,
-      createdAt: report.created_at,
-    })),
-    ...commentReportList.map((report) => ({
-      kind: "comment" as const,
-      targetId: report.comment_id,
-      reporterId: report.reporter_id,
-      reason: report.reason,
-      status: report.status,
-      createdAt: report.created_at,
-    })),
-    ...humorReportList.map((report) => ({
-      kind: "humor" as const,
-      targetId: report.caption_id,
-      reporterId: report.reporter_id,
-      reason: report.reason,
-      status: report.status,
-      createdAt: report.created_at,
-    })),
-  ].sort(
-    (first, second) =>
-      new Date(second.createdAt).getTime() -
-      new Date(first.createdAt).getTime(),
-  );
-
   return (
     <main className="min-h-screen bg-[#FAFAFA] px-6 py-12 text-[#333333]">
       <section className="mx-auto max-w-2xl">
@@ -383,7 +395,12 @@ export default async function AdminReportsPage({
           </p>
 
           <p className="mt-4 text-sm text-gray-600">
-            현재 조회된 신고는 총 {unifiedReportList.length}건입니다.
+            현재 조건에 해당하는 신고는 총 {reportCount}건입니다.
+          </p>
+
+          <p className="mt-2 text-sm text-gray-500">
+            {currentPage} / {totalPages} 페이지 · 이번 페이지{" "}
+            {unifiedReportList.length}건
           </p>
 
           <nav
@@ -393,11 +410,8 @@ export default async function AdminReportsPage({
             {REPORT_FILTER_OPTIONS.map((option) => (
               <Link
                 key={option.value}
-                href={
-                  option.value === "all"
-                    ? "/admin/reports"
-                    : `/admin/reports?status=${option.value}`
-                }
+                href={getReportsPageHref(option.value, 1)}
+                prefetch={false}
                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
                   selectedStatus === option.value
                     ? "border-emerald-500 bg-emerald-500 text-white"
@@ -552,6 +566,51 @@ export default async function AdminReportsPage({
               })}
             </ul>
           )}
+
+          <nav
+            aria-label="신고 목록 페이지 이동"
+            className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-5"
+          >
+            {currentPage > 1 ? (
+              <Link
+                href={getReportsPageHref(selectedStatus, currentPage - 1)}
+                prefetch={false}
+                className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-emerald-300 hover:text-emerald-600"
+              >
+                ← 이전
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-300"
+              >
+                ← 이전
+              </button>
+            )}
+
+            <p className="text-sm text-gray-500">
+              {currentPage} / {totalPages} 페이지
+            </p>
+
+            {currentPage < totalPages ? (
+              <Link
+                href={getReportsPageHref(selectedStatus, currentPage + 1)}
+                prefetch={false}
+                className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:border-emerald-300 hover:text-emerald-600"
+              >
+                다음 →
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-300"
+              >
+                다음 →
+              </button>
+            )}
+          </nav>
         </div>
       </section>
     </main>
