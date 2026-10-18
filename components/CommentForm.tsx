@@ -6,16 +6,20 @@ import { useState } from "react";
 
 import { createClient } from "@/lib/supabase/client";
 
+import type { CommentWithAuthor } from "@/components/CommentList";
+
 const MAX_COMMENT_LENGTH = 200;
 
 type CommentFormProps = {
   postId: number;
   currentUserId: string | null;
+  onCreated?: (comment: CommentWithAuthor) => void;
 };
 
 export default function CommentForm({
   postId,
   currentUserId,
+  onCreated,
 }: CommentFormProps) {
   const router = useRouter();
 
@@ -26,11 +30,7 @@ export default function CommentForm({
   const handleSubmit = async () => {
     const trimmedContent = content.trim();
 
-    if (
-      currentUserId === null ||
-      trimmedContent === "" ||
-      isSubmitting
-    ) {
+    if (currentUserId === null || trimmedContent === "" || isSubmitting) {
       return;
     }
 
@@ -40,16 +40,30 @@ export default function CommentForm({
     try {
       const supabase = createClient();
 
-      const { error } = await supabase.from("comments").insert({
-        post_id: postId,
-        user_id: currentUserId,
-        content: trimmedContent,
-      });
+      const { data, error } = await supabase
+        .from("comments")
+        .insert({
+          post_id: postId,
+          user_id: currentUserId,
+          content: trimmedContent,
+        })
+        .select(
+          `
+            id,
+            user_id,
+            content,
+            created_at,
+            author:profiles!comments_user_id_fkey(
+              nickname
+            )
+          `,
+        )
+        .single();
 
-      if (error) {
+      if (error || data === null) {
         console.error("댓글 작성 실패:", error);
 
-        if (error.code === "42501") {
+        if (error?.code === "42501") {
           setErrorMessage(
             "댓글을 작성할 권한이 없거나 댓글 작성이 중지된 기록입니다.",
           );
@@ -60,8 +74,16 @@ export default function CommentForm({
         return;
       }
 
+      if (onCreated) {
+        onCreated(data as CommentWithAuthor);
+      } else {
+        router.refresh();
+      }
+
       setContent("");
-      router.refresh();
+    } catch (error) {
+      console.error("댓글 작성 요청 실패:", error);
+      setErrorMessage("댓글을 저장하지 못했습니다. 연결 상태를 확인해 주세요.");
     } finally {
       setIsSubmitting(false);
     }

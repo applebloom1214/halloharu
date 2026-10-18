@@ -4,10 +4,9 @@ import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-import CommentForm from "@/components/CommentForm";
-import CommentDeleteButton from "@/components/CommentDeleteButton";
-import CommentEditForm from "@/components/CommentEditForm";
-import CommentReportButton from "@/components/CommentReportButton";
+import CommentList, { type CommentWithAuthor } from "@/components/CommentList";
+
+const COMMENT_PAGE_SIZE = 10;
 
 type PostDetailPageProps = {
   params: Promise<{
@@ -18,26 +17,6 @@ type PostDetailPageProps = {
     q?: string | string[];
     page?: string | string[];
   }>;
-};
-
-type CommentAuthor = {
-  nickname: string;
-};
-
-type CommentWithAuthor = {
-  id: number;
-  user_id: string;
-  content: string;
-  created_at: string;
-  author: CommentAuthor | CommentAuthor[] | null;
-};
-
-const getCommentAuthorNickname = (author: CommentWithAuthor["author"]) => {
-  if (Array.isArray(author)) {
-    return author[0]?.nickname ?? "알 수 없는 사용자";
-  }
-
-  return author?.nickname ?? "알 수 없는 사용자";
 };
 
 export default async function PostDetailPage({
@@ -69,6 +48,8 @@ export default async function PostDetailPage({
   }
 
   const supabase = await createClient();
+
+  const commentListKey = new Date().toISOString();
 
   const { data: claimsData } = await supabase.auth.getClaims();
 
@@ -120,34 +101,46 @@ export default async function PostDetailPage({
     return profile?.nickname ?? "알 수 없는 사용자";
   };
 
-  const [authorNickname, { data: comments, error: commentsError }] =
-    await Promise.all([
-      fetchAuthorNickname(),
+  const [
+    authorNickname,
+    { data: comments, error: commentsError, count: commentCount },
+  ] = await Promise.all([
+    fetchAuthorNickname(),
 
-      supabase
-        .from("comments")
-        .select(
-          `
-        id,
-        user_id,
-        content,
-        created_at,
-        author:profiles!comments_user_id_fkey(
-          nickname
-        )
-      `,
-        )
-        .eq("post_id", postId)
-        .eq("is_hidden", false)
-        .order("created_at", { ascending: true }),
-    ]);
+    supabase
+      .from("comments")
+      .select(
+        `
+          id,
+          user_id,
+          content,
+          created_at,
+          author:profiles!comments_user_id_fkey(
+            nickname
+          )
+        `,
+        { count: "exact" },
+      )
+      .eq("post_id", postId)
+      .eq("is_hidden", false)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(COMMENT_PAGE_SIZE + 1),
+  ]);
 
-  if (commentsError) {
-    console.error("댓글 목록 조회 실패 : ", commentsError);
+  if (commentsError || commentCount === null) {
+    console.error("댓글 목록 조회 실패:", commentsError);
     throw new Error("댓글을 불러오지 못했습니다.");
   }
 
-  const commentList = (comments ?? []) as CommentWithAuthor[];
+  const fetchedComments = comments ?? [];
+
+  const initialHasMore = fetchedComments.length > COMMENT_PAGE_SIZE;
+
+  const commentList = fetchedComments.slice(
+    0,
+    COMMENT_PAGE_SIZE,
+  ) as CommentWithAuthor[];
 
   const reportedCommentIds = new Set<number>();
 
@@ -217,69 +210,18 @@ export default async function PostDetailPage({
           </div>
         </article>
 
-        <section className="mt-6 rounded-2xl border bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-700">
-            댓글 {commentList.length}
-          </h2>
-
-          {commentList.length === 0 ? (
-            <p className="mt-4 text-sm text-gray-400">
-              {post.comments_enabled
-                ? "아직 댓글이 없습니다."
-                : "작성자가 댓글을 받지 않는 기록입니다."}
-            </p>
-          ) : (
-            <ul className="mt-4 divide-y">
-              {commentList.map((comment) => (
-                <li key={comment.id} className="py-4 first:pt-0 last:pb-0">
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="text-sm font-semibold text-emerald-600">
-                      {getCommentAuthorNickname(comment.author)}
-                    </p>
-
-                    <div className="flex shrink-0 items-center gap-3">
-                      <time className="text-xs text-gray-400">
-                        {new Date(comment.created_at).toLocaleString("ko-KR", {
-                          timeZone: "Asia/Seoul",
-                        })}
-                      </time>
-
-                      {currentUserId !== null &&
-                        (currentUserId === comment.user_id ||
-                          currentUserId === post.user_id) && (
-                          <CommentDeleteButton commentId={comment.id} />
-                        )}
-                    </div>
-                  </div>
-
-                  {currentUserId === comment.user_id ? (
-                    <CommentEditForm
-                      commentId={comment.id}
-                      initialContent={comment.content}
-                    />
-                  ) : (
-                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">
-                      {comment.content}
-                    </p>
-                  )}
-
-                  {currentUserId !== null &&
-                    currentUserId !== comment.user_id && (
-                      <CommentReportButton
-                        commentId={comment.id}
-                        currentUserId={currentUserId}
-                        initialReported={reportedCommentIds.has(comment.id)}
-                      />
-                    )}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {post.comments_enabled && (
-            <CommentForm postId={post.id} currentUserId={currentUserId} />
-          )}
-        </section>
+        <CommentList
+          key={commentListKey}
+          postId={post.id}
+          postAuthorId={post.user_id}
+          currentUserId={currentUserId}
+          commentsEnabled={post.comments_enabled}
+          initialComments={commentList}
+          initialReportedCommentIds={[...reportedCommentIds]}
+          totalCount={commentCount}
+          initialHasMore={initialHasMore}
+          pageSize={COMMENT_PAGE_SIZE}
+        />
       </section>
     </main>
   );
