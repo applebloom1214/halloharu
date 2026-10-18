@@ -304,6 +304,38 @@ npm run dev
 - [x] 공통 페이지 없음(404) 안내 및 홈으로 돌아가기
 - [x] 페이지 렌더링 오류 안내 및 새로고침으로 다시 시도
 
+## 목록 조회 인덱스
+
+목록 조회 조건과 정렬 순서를 점검하고 다음 인덱스를 추가했습니다.
+
+| 테이블 | 인덱스 구성 | 목적 |
+| --- | --- | --- |
+| humor_prompts | ends_at DESC, id DESC | 지난 유머 회차의 종료 시간·ID 기준 조회 지원 |
+| reports | status, created_at DESC, post_id DESC, reporter_id ASC | 게시글 신고의 상태별 목록 조회 지원 |
+| comment_reports | status, created_at DESC, comment_id DESC, reporter_id ASC | 댓글 신고의 상태별 목록 조회 지원 |
+| humor_caption_reports | status, created_at DESC, caption_id DESC, reporter_id ASC | 유머 한마디 신고의 상태별 목록 조회 지원 |
+
+적용한 마이그레이션:
+
+- `supabase/migrations/20261018_add_humor_archive_pagination_index.sql`
+- `supabase/migrations/20261018_add_report_status_pagination_indexes.sql`
+
+댓글 목록은 기존 `(post_id, created_at)` 인덱스가 사용되는 것을 확인하여 유지했습니다.
+
+검증 내용:
+
+- 비로그인 역할로 댓글과 지난 유머 회차 조회의 실행 계획 확인
+- 관리자 역할로 신고 목록의 검토 대기·전체 조회 실행 계획 확인
+- 추가한 인덱스의 등록 여부 확인
+- 지난 유머 회차 표시·링크와 관리자 신고 필터·페이지 이동 확인
+
+현재 데이터가 적어 지난 유머 회차와 신고 목록의 실행 계획에서는
+새 인덱스 대신 순차 스캔이 선택되었습니다.
+실행 시간 차이만으로 인덱스의 성능 개선 효과를 판단하지 않았으며,
+데이터 증가 후 실제 사용 여부와 성능을 다시 확인할 예정입니다.
+신고 인덱스는 상태별 조회를 대상으로 구성했습니다.
+
+
 ## 게시글 댓글 목록
 
 `/posts/[id]`에서 숨겨지지 않은 댓글을 작성 시간 오름차순으로 조회합니다.
