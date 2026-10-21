@@ -4,7 +4,9 @@ import { notFound } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-import HumorCaptionReportButton from "@/components/HumorCaptionReportButton";
+import HumorArchiveCaptionList from "@/components/HumorArchiveCaptionList";
+
+import { HUMOR_CAPTION_PAGE_SIZE } from "@/lib/humor/captions";
 
 type ArchiveDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -29,7 +31,7 @@ export default async function ArchiveDetailPage({
 
   const { data: prompt, error } = await supabase
     .from("humor_prompts")
-    .select("id, image_path, alt_text, ends_at")
+    .select("id, image_path, alt_text, ends_at, caption_feed_version")
     .eq("id", promptId)
     .lte("ends_at", new Date().toISOString())
     .maybeSingle();
@@ -42,12 +44,20 @@ export default async function ArchiveDetailPage({
     notFound();
   }
 
-  const { data: captions, error: captionsError } = await supabase
+  const { data: captionRows, error: captionsError } = await supabase
     .from("humor_caption_feed")
-    .select("id, content, is_own, author_nickname, total_score, rating_count")
+    .select(
+      "id, content, created_at, is_own, author_nickname, total_score, rating_count, current_user_score",
+    )
     .eq("prompt_id", promptId)
     .order("total_score", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(HUMOR_CAPTION_PAGE_SIZE + 1);
+
+  const captions = (captionRows ?? []).slice(0, HUMOR_CAPTION_PAGE_SIZE);
+
+  const initialHasMore = (captionRows?.length ?? 0) > HUMOR_CAPTION_PAGE_SIZE;
 
   const reportedCaptionIds = new Set<number>();
 
@@ -63,6 +73,7 @@ export default async function ArchiveDetailPage({
 
     if (reportsError) {
       console.error("지난 회차 신고 내역 조회 실패:", reportsError);
+      throw new Error("지난 회차의 신고 상태를 불러오지 못했습니다.");
     } else {
       for (const report of reports ?? []) {
         reportedCaptionIds.add(report.caption_id);
@@ -127,28 +138,16 @@ export default async function ArchiveDetailPage({
         ) : !captions || captions.length === 0 ? (
           <p className="mt-4 text-gray-500">등록된 한마디가 없습니다.</p>
         ) : (
-          <ol className="mt-4 space-y-3">
-            {captions.map((caption, index) => (
-              <li key={caption.id} className="rounded-xl border p-4">
-                <p className="text-sm font-semibold text-emerald-600">
-                  {index + 1}위 ·{" "}
-                  {caption.author_nickname ?? "알 수 없는 참가자"}
-                </p>
-                <p className="mt-2 whitespace-pre-wrap break-words">
-                  {caption.content}
-                </p>
-                <p className="mt-2 text-sm text-amber-600">
-                  총점 {caption.total_score}점 · {caption.rating_count}명 평가
-                </p>
-                <HumorCaptionReportButton
-                  captionId={caption.id}
-                  currentUserId={currentUserId}
-                  isOwn={caption.is_own}
-                  initialReported={reportedCaptionIds.has(caption.id)}
-                />
-              </li>
-            ))}
-          </ol>
+          <HumorArchiveCaptionList
+            key={`${promptId}-${prompt.caption_feed_version}-${prompt.ends_at}-${currentUserId ?? "guest"}`}
+            promptId={promptId}
+            initialCaptions={captions}
+            initialHasMore={initialHasMore}
+            feedVersion={prompt.caption_feed_version}
+            endsAt={prompt.ends_at}
+            currentUserId={currentUserId}
+            initialReportedCaptionIds={Array.from(reportedCaptionIds)}
+          />
         )}
       </section>
     </main>

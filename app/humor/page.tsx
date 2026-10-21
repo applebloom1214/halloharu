@@ -1,22 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import HumorCaptionForm from "@/components/HumorCaptionForm";
-import HumorRatingButtons from "@/components/HumorRatingButtons";
 import HumorCaptionDeleteButton from "@/components/HumorCaptionDeleteButton";
-import HumorCaptionReportButton from "@/components/HumorCaptionReportButton";
+import HumorCaptionList from "@/components/HumorCaptionList";
+import {
+  HUMOR_CAPTION_PAGE_SIZE,
+  type HumorCaption,
+} from "@/lib/humor/captions";
 
 import { createClient } from "@/lib/supabase/server";
-
-type HumorCaption = {
-  id: number;
-  content: string;
-  created_at: string;
-  is_own: boolean;
-  author_nickname: string | null;
-  total_score: number;
-  rating_count: number;
-  current_user_score: number | null;
-};
 
 const formatEndsAt = (endsAt: string) =>
   new Intl.DateTimeFormat("ko-KR", {
@@ -28,22 +20,15 @@ const formatEndsAt = (endsAt: string) =>
     minute: "2-digit",
   }).format(new Date(endsAt));
 
-const formatCreatedAt = (createdAt: string) =>
-  new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(createdAt));
-
 export default async function HumorPage() {
   const supabase = await createClient();
   const now = new Date().toISOString();
 
   const { data: prompt, error: promptError } = await supabase
     .from("humor_prompts")
-    .select("id, image_path, alt_text, starts_at, ends_at")
+    .select(
+      "id, image_path, alt_text, starts_at, ends_at, caption_feed_version",
+    )
     .lte("starts_at", now)
     .order("starts_at", { ascending: false })
     .limit(1)
@@ -111,23 +96,34 @@ export default async function HumorPage() {
   const currentUserId =
     typeof claimsData?.claims.sub === "string" ? claimsData.claims.sub : null;
 
-  const { data: captionData, error: captionsError } = await supabase
+  const {
+    data: captionData,
+    error: captionsError,
+    count: captionCount,
+  } = await supabase
     .from("humor_caption_feed")
     .select(
-      `id, 
-      content, 
-      created_at, 
+      `id,
+      content,
+      created_at,
       is_own,
       author_nickname,
       total_score,
       rating_count,
       current_user_score`,
+      { count: "exact" },
     )
     .eq("prompt_id", prompt.id)
-    .order("total_score", { ascending: true })
-    .order("created_at", { ascending: true });
+    .order("total_score", { ascending: false })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(HUMOR_CAPTION_PAGE_SIZE + 1);
 
-  const captionList = (captionData ?? []) as HumorCaption[];
+  const captionRows = (captionData ?? []) as HumorCaption[];
+
+  const captionList = captionRows.slice(0, HUMOR_CAPTION_PAGE_SIZE);
+
+  const initialHasMore = captionRows.length > HUMOR_CAPTION_PAGE_SIZE;
 
   const reportedCaptionIds = new Set<number>();
 
@@ -143,6 +139,7 @@ export default async function HumorPage() {
 
     if (reportsError) {
       console.error("한마디 신고 내역 조회 실패 : ", reportsError);
+      throw new Error("한마디 신고 상태를 불러오지 못했습니다.");
     } else {
       for (const report of reports ?? []) {
         reportedCaptionIds.add(report.caption_id);
@@ -150,24 +147,8 @@ export default async function HumorPage() {
     }
   }
 
-  const sortedCaptionList = [...captionList].sort(
-    (firstCaption, secondCaption) => {
-      const scoreDifference =
-        secondCaption.total_score - firstCaption.total_score;
-
-      if (scoreDifference !== 0) {
-        return scoreDifference;
-      }
-
-      return (
-        new Date(secondCaption.created_at).getTime() -
-        new Date(firstCaption.created_at).getTime()
-      );
-    },
-  );
-
   const bestCaption =
-    sortedCaptionList.find((caption) => caption.rating_count > 0) ?? null;
+    captionList.find((caption) => caption.rating_count > 0) ?? null;
 
   let ownCaptionStatus: "none" | "visible" | "hidden" = "none";
 
@@ -191,6 +172,32 @@ export default async function HumorPage() {
   }
 
   const hasSubmittedCaption = ownCaptionStatus !== "none";
+  let ownCaption: HumorCaption | null = null;
+
+  if (currentUserId !== null && ownCaptionStatus === "visible") {
+    const { data: ownCaptionData, error: ownCaptionError } = await supabase
+      .from("humor_caption_feed")
+      .select(
+        `id,
+        content,
+        created_at,
+        is_own,
+        author_nickname,
+        total_score,
+        rating_count,
+        current_user_score`,
+      )
+      .eq("prompt_id", prompt.id)
+      .eq("is_own", true)
+      .maybeSingle();
+
+    if (ownCaptionError) {
+      console.error("본인 한마디 조회 실패:", ownCaptionError);
+      throw new Error("본인 한마디를 불러오지 못했습니다.");
+    }
+
+    ownCaption = ownCaptionData as HumorCaption | null;
+  }
   return (
     <main className="min-h-screen bg-[#FAFAFA] px-4 py-10 text-[#333333] sm:px-6">
       <section className="mx-auto max-w-2xl">
@@ -289,7 +296,7 @@ export default async function HumorPage() {
                   promptId={prompt.id}
                   currentUserId={currentUserId}
                   hasSubmittedCaption={hasSubmittedCaption}
-                  isCaptionHidden = {ownCaptionStatus === "hidden"}
+                  isCaptionHidden={ownCaptionStatus === "hidden"}
                 />
               ) : (
                 <div className="mt-8 rounded-2xl bg-gray-50 px-4 py-5 text-center">
@@ -298,6 +305,26 @@ export default async function HumorPage() {
                   </p>
                 </div>
               )}
+              {ownCaption !== null && (
+                <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <h2 className="text-sm font-bold text-emerald-700">
+                    나의 한마디
+                  </h2>
+
+                  <p className="mt-3 whitespace-pre-wrap break-words text-gray-700">
+                    {ownCaption.content}
+                  </p>
+
+                  <p className="mt-3 text-sm font-medium text-amber-600">
+                    총점 {ownCaption.total_score}점 · {ownCaption.rating_count}
+                    명 평가
+                  </p>
+
+                  {isParticipationOpen && (
+                    <HumorCaptionDeleteButton captionId={ownCaption.id} />
+                  )}
+                </section>
+              )}
               <section className="mt-8 border-t pt-8">
                 <div className="flex items-center justify-between gap-4">
                   <h2 className="text-xl font-bold text-gray-800">
@@ -305,7 +332,7 @@ export default async function HumorPage() {
                   </h2>
 
                   <span className="text-sm text-gray-400">
-                    {captionList.length}개
+                    {captionCount ?? 0}개
                   </span>
                 </div>
 
@@ -314,66 +341,17 @@ export default async function HumorPage() {
                     아직 등록된 한마디가 없습니다. 첫 번째 한마디를 남겨보세요.
                   </p>
                 ) : (
-                  <ul className="mt-4 space-y-3">
-                    {sortedCaptionList.map((caption) => (
-                      <li
-                        key={caption.id}
-                        className="rounded-2xl border bg-white p-4"
-                      >
-                        <div className="flex items-center justify-between gap-4">
-                          <p
-                            className={`text-sm font-semibold ${
-                              caption.is_own
-                                ? "text-emerald-600"
-                                : "text-gray-500"
-                            }`}
-                          >
-                            {isParticipationOpen
-                              ? caption.is_own
-                                ? "나의 한마디"
-                                : "익명 참가자"
-                              : (caption.author_nickname ??
-                                "알 수 없는 참가자")}
-                          </p>
-                          <time
-                            dateTime={caption.created_at}
-                            className="shrink-0 text-xs text-gray-400"
-                          >
-                            {formatCreatedAt(caption.created_at)}
-                          </time>
-                        </div>
-
-                        <p className="mt-3 whitespace-pre-wrap break-words text-gray-700">
-                          {caption.content}
-                        </p>
-
-                        <p className="mt-3 text-sm font-medium text-amber-500">
-                          총점 {caption.total_score}점 · {caption.rating_count}
-                          명 평가
-                        </p>
-
-                        {isParticipationOpen && (
-                          <HumorRatingButtons
-                            captionId={caption.id}
-                            currentUserId={currentUserId}
-                            isOwn={caption.is_own}
-                            initialScore={caption.current_user_score}
-                          />
-                        )}
-
-                        {isParticipationOpen && caption.is_own && (
-                          <HumorCaptionDeleteButton captionId={caption.id} />
-                        )}
-
-                        <HumorCaptionReportButton
-                          captionId={caption.id}
-                          currentUserId={currentUserId}
-                          isOwn={caption.is_own}
-                          initialReported={reportedCaptionIds.has(caption.id)}
-                        />
-                      </li>
-                    ))}
-                  </ul>
+                  <HumorCaptionList
+                    key={`${prompt.id}-${prompt.caption_feed_version}-${prompt.ends_at}-${isParticipationOpen}-${currentUserId ?? "guest"}`}
+                    promptId={prompt.id}
+                    initialCaptions={captionList}
+                    initialHasMore={initialHasMore}
+                    feedVersion={prompt.caption_feed_version}
+                    endsAt={prompt.ends_at}
+                    currentUserId={currentUserId}
+                    isParticipationOpen={isParticipationOpen}
+                    initialReportedCaptionIds={Array.from(reportedCaptionIds)}
+                  />
                 )}
               </section>
             </>
