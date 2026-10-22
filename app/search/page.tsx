@@ -2,6 +2,14 @@ import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 
+import {
+  escapeLikePattern,
+  SEARCH_RESULTS_PER_PAGE,
+  type SearchPost,
+} from "@/lib/search/posts";
+
+import SearchResultList from "@/components/SearchResultList";
+
 type SearchPageProps = {
   searchParams: Promise<{
     q?: string | string[];
@@ -9,23 +17,10 @@ type SearchPageProps = {
   }>;
 };
 
-type SearchPost = {
-  id: number;
-  user_id: string | null;
-  content: string;
-  created_at: string;
-};
-
 type DatabaseProfile = {
   id: string;
   nickname: string;
 };
-
-const escapeLikePattern = (value: string) => {
-  return value.replace(/[\\%_]/g, "\\$&");
-};
-
-const SEARCH_RESULTS_PER_PAGE = 10;
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { q, page } = await searchParams;
@@ -58,6 +53,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       .eq("is_hidden", false)
       .ilike("content", `%${escapedKeyword}%`)
       .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
       .range(rangeStart, rangeEnd);
 
     if (error) {
@@ -172,77 +168,20 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               “{keyword}” 검색 결과 총 {totalSearchResultCount}개
             </h2>
 
-            <ul className="mt-3 space-y-3">
-              {searchResults.map((post) => (
-                <li key={post.id}>
-                  <Link
-                    href={`/posts/${post.id}?q=${encodeURIComponent(
-                      keyword,
-                    )}&page=${currentPage}`}
-                    className="block rounded-2xl border bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-emerald-600">
-                        {post.user_id !== null
-                          ? (authorNicknameById.get(post.user_id) ??
-                            "알 수 없는 사용자")
-                          : "알 수 없는 사용자"}
-                      </p>
-
-                      <time className="shrink-0 text-xs text-gray-400">
-                        {new Date(post.created_at).toLocaleString("ko-KR", {
-                          timeZone: "Asia/Seoul",
-                        })}
-                      </time>
-                    </div>
-
-                    <p className="mt-3 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">
-                      {post.content}
-                    </p>
-
-                    <p className="mt-3 text-right text-xs font-semibold text-emerald-600">
-                      상세 보기 →
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            <div className="mt-6 flex items-center justify-center gap-4">
-              {currentPage > 1 ? (
-                <Link
-                  href={`/search?q=${encodeURIComponent(keyword)}&page=${
-                    currentPage - 1
-                  }`}
-                  className="rounded-full border bg-white px-4 py-2 text-sm text-sm text-gray-600 transition hover:border-emerald-300 hover:text-emerald-600"
-                >
-                  ← 이전
-                </Link>
-              ) : (
-                <span className="rounded-full border bg-gray-50 px-4 py-2 text-sm text-gray-300">
-                  ← 이전
-                </span>
-              )}
-
-              <span className="text-sm font-semibold text-gray-500">
-                {currentPage}페이지
-              </span>
-
-              {hasNextPage ? (
-                <Link
-                  href={`/search?q=${encodeURIComponent(keyword)}&page=${
-                    currentPage + 1
-                  }`}
-                  className="rounded-full border bg-white px-4 py-2 text-gray-600 transition hover:border-emerald-300 hover:text-emerald-600"
-                >
-                  다음 →
-                </Link>
-              ) : (
-                <span className="rounded-full border bg-gray-50 px-4 py-2 text-sm text-gray-300">
-                  다음 →
-                </span>
-              )}
-            </div>
+            <SearchResultList
+              key={`${keyword}:${currentPage}`}
+              keyword={keyword}
+              currentPage={currentPage}
+              initialHasMore={hasNextPage}
+              initialPosts={searchResults.map((post) => ({
+                ...post,
+                author_nickname:
+                  post.user_id !== null
+                    ? (authorNicknameById.get(post.user_id) ??
+                      "알 수 없는 사용자")
+                    : "알 수 없는 사용자",
+              }))}
+            />
           </section>
         )}
       </section>
