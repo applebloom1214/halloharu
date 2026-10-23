@@ -113,6 +113,9 @@ export default function Home() {
   const [selectedRecordDate, setSelectRecordDate] = useState<string | null>(
     null,
   );
+  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
+  const selectedRecordRequestRef = useRef(0);
+  const pendingPostUpdateIdsRef = useRef(new Set<number>());
   const [selectedRecordContent, setSelectedRecordContent] = useState<
     string | null
   >(null);
@@ -701,9 +704,15 @@ export default function Home() {
   };
 
   const handleCalendarDateSelect = async (dateKey: string) => {
-    if (!userId) return;
+    if (!userId) {
+      return;
+    }
+
+    const requestId = selectedRecordRequestRef.current + 1;
+    selectedRecordRequestRef.current = requestId;
 
     setSelectRecordDate(dateKey);
+    setSelectedRecordId(null);
     setSelectedRecordContent(null);
     setSelectedRecordImageUrl(null);
     setSelectedRecordError(null);
@@ -720,8 +729,12 @@ export default function Home() {
         .eq("daily_post_date", dateKey)
         .maybeSingle();
 
+      if (requestId !== selectedRecordRequestRef.current) {
+        return;
+      }
+
       if (error) {
-        console.error("선택한 기록 불러오기 실패 : ", error);
+        console.error("선택한 기록 불러오기 실패:", error);
         setSelectedRecordError("기록을 불러오지 못했습니다.");
         return;
       }
@@ -731,6 +744,7 @@ export default function Home() {
         return;
       }
 
+      setSelectedRecordId(data.id);
       setSelectedRecordContent(data.content);
 
       const selectedImageUrl = data.image_path
@@ -738,8 +752,17 @@ export default function Home() {
         : null;
 
       setSelectedRecordImageUrl(selectedImageUrl);
+    } catch (error) {
+      if (requestId !== selectedRecordRequestRef.current) {
+        return;
+      }
+
+      console.error("선택한 기록 불러오기 실패:", error);
+      setSelectedRecordError("기록을 불러오지 못했습니다.");
     } finally {
-      setIsSelectedRecordLoading(false);
+      if (requestId === selectedRecordRequestRef.current) {
+        setIsSelectedRecordLoading(false);
+      }
     }
   };
 
@@ -1167,10 +1190,14 @@ export default function Home() {
               selectedRecordDate !== null &&
               !updatedDates.includes(selectedRecordDate)
             ) {
+              selectedRecordRequestRef.current += 1;
+
               setSelectRecordDate(null);
+              setSelectedRecordId(null);
               setSelectedRecordContent(null);
               setSelectedRecordImageUrl(null);
               setSelectedRecordError(null);
+              setIsSelectedRecordLoading(false);
             }
           }
         }
@@ -1186,42 +1213,71 @@ export default function Home() {
   ): Promise<boolean> => {
     const trimmedContent = updatedContent.trim();
 
-    if (trimmedContent === "") {
+    if (
+      !userId ||
+      !Number.isInteger(postId) ||
+      postId <= 0 ||
+      trimmedContent === "" ||
+      trimmedContent.length > 300 ||
+      pendingPostUpdateIdsRef.current.has(postId)
+    ) {
       return false;
     }
 
-    const supabase = createClient();
+    pendingPostUpdateIdsRef.current.add(postId);
 
-    const { error } = await supabase
-      .from("posts")
-      .update({
-        content: trimmedContent,
-      })
-      .eq("id", postId)
-      .select("content")
-      .single();
+    const selectedRequestId = selectedRecordRequestRef.current;
 
-    if (error) {
+    try {
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from("posts")
+        .update({
+          content: trimmedContent,
+        })
+        .eq("id", postId)
+        .eq("user_id", userId)
+        .eq("is_hidden", false)
+        .select("content")
+        .single();
+
+      if (
+        error ||
+        data === null ||
+        typeof data.content !== "string"
+      ) {
+        console.error("게시글 수정 실패:", error);
+        return false;
+      }
+
+      const savedContent = data.content;
+
+      setPosts((previousPosts) =>
+        previousPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                content: savedContent,
+              }
+            : post,
+        ),
+      );
+
+      if (
+        selectedRecordId === postId &&
+        selectedRequestId === selectedRecordRequestRef.current
+      ) {
+        setSelectedRecordContent(savedContent);
+      }
+
+      return true;
+    } catch (error) {
       console.error("게시글 수정 실패:", error);
       return false;
+    } finally {
+      pendingPostUpdateIdsRef.current.delete(postId);
     }
-
-    setPosts((previousPosts) =>
-      previousPosts.map((post) =>
-        post.id === postId
-          ? {
-              ...post,
-              content: trimmedContent,
-            }
-          : post,
-      ),
-    );
-
-    if (selectedRecordDate !== null) {
-      await handleCalendarDateSelect(selectedRecordDate);
-    }
-
-    return true;
   };
 
   return (
@@ -1387,11 +1443,14 @@ export default function Home() {
 
             {selectedRecordDate !== null && (
               <SelectedRecordCard
+                key={selectedRecordId ?? "loading"}
+                postId={selectedRecordId}
                 selectedDate={selectedRecordDate}
                 content={selectedRecordContent}
                 imageUrl={selectedRecordImageUrl}
                 isLoading={isSelectedRecordLoading}
                 errorMessage={selectedRecordError}
+                onUpdate={handleUpdate}
               />
             )}
 
